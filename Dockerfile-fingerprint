@@ -47,6 +47,7 @@ RUN apt-get update \
       postgresql-server-dev-all \
       libgtest-dev \
       golang-go \
+      libspdlog-dev \
       valgrind && \
       apt-get clean
 
