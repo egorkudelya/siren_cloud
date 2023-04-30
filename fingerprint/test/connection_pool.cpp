@@ -31,7 +31,7 @@ TEST(DBConnectionPool, TestParallelBorrowing)
     {
         Query query;
         query.emplace("query", "SELECT 1;");
-        std::vector<WaitableFuture> futures;
+        std::vector<siren::cloud::WaitableFuture> futures;
         for (int i = 0; i < 100; i++)
         {
             futures.emplace_back(siren::cloud::AsyncManager::instance().submitTask([connectionPool, query] {

@@ -67,7 +67,7 @@ find_package(cpr REQUIRED)
 find_package(spdlog REQUIRED)
 
 target_link_libraries(logger PRIVATE spdlog::spdlog)
-target_link_libraries(thread_pool PUBLIC siren_core)
+target_link_libraries(thread_pool PUBLIC logger siren_core)
 target_link_libraries(db_abstraction_layer PUBLIC logger request_manager thread_pool nlohmann_json::nlohmann_json cpr::cpr ${PQXX_LIB} ${PQ_LIB})
 
 target_include_directories(db_abstraction_layer PUBLIC ${PostgreSQL_INCLUDE_DIRS})
