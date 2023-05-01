@@ -33,7 +33,6 @@ namespace siren::cloud
                 size_t thisId = std::hash<std::thread::id>{}(std::this_thread::get_id());
                 if (m_primaryDispatch.isPoolId(thisId))
                 {
-                    Logger::log(LogLevel::WARNING, __FILE__, __FUNCTION__, __LINE__, "ThreadPool task was submitted by a worker thread");
                     return WaitableFuture{std::move(std::async(std::launch::async, invocable)), isWaiting};
                 }
                 Task task(CallBack(std::move(invocable), thisId));
@@ -62,8 +61,8 @@ namespace siren::cloud
         std::mutex m_pool_mtx;
         std::condition_variable m_wait_cv;
         std::condition_variable m_pause_cv;
-        std::atomic<int> m_job_count{0};
-        std::atomic<int> m_running_job_count{0};
+        std::atomic<int64_t> m_job_count{0};
+        std::atomic<int64_t> m_running_job_count{0};
     };
 
     using ThreadPoolPtr = std::shared_ptr<ThreadPool>;
