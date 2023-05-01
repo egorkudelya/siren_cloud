@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 #include "elastic_connection.h"
 #include "../../common/request_manager.h"
+#include "../../common/common.h"
 #include "../../thread_pool/async_manager.h"
 #include "../../logger/logger.h"
 
