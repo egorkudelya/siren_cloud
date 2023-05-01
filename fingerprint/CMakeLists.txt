@@ -68,6 +68,11 @@ add_library(histogram STATIC
         src/histogram/histogram.cpp
         )
 
+add_library(engine STATIC
+        src/engine/engine.h
+        src/engine/engine.cpp
+        )
+
 add_library(wasserstein STATIC "/usr/local/include/wasserstein/wasserstein.h")
 set_target_properties(wasserstein PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -89,6 +94,7 @@ target_include_directories(db_abstraction_layer PRIVATE ${PostgreSQL_INCLUDE_DIR
 target_include_directories(db_abstraction_layer PRIVATE ${CMAKE_BINARY_DIR})
 
 target_link_libraries(histogram PRIVATE db_abstraction_layer logger wasserstein)
+target_link_libraries(engine PRIVATE db_abstraction_layer logger histogram)
 
 if (BUILD_CLOUD_TESTS)
     find_package(GTest REQUIRED)
