@@ -60,18 +60,33 @@ add_library(db_abstraction_layer STATIC
         src/storage/elastic/elastic_connector.cpp
         )
 
+add_library(histogram STATIC
+        src/histogram/entry_layout.h
+        src/histogram/histogram.h
+        src/histogram/histogram.cpp
+        )
+
+add_library(wasserstein STATIC "/usr/local/include/wasserstein/wasserstein.h")
+set_target_properties(wasserstein PROPERTIES LINKER_LANGUAGE CXX)
+
 find_library(PQXX_LIB pqxx REQUIRED)
 find_library(PQ_LIB pq REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(cpr REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(Boost 1.36.0 REQUIRED)
+if(Boost_FOUND)
+    target_include_directories(histogram PRIVATE ${Boost_INCLUDE_DIRS})
+endif()
 
 target_link_libraries(logger PRIVATE spdlog::spdlog)
 target_link_libraries(thread_pool PUBLIC logger siren_core)
 target_link_libraries(db_abstraction_layer PUBLIC logger request_manager thread_pool nlohmann_json::nlohmann_json cpr::cpr ${PQXX_LIB} ${PQ_LIB})
 
-target_include_directories(db_abstraction_layer PUBLIC ${PostgreSQL_INCLUDE_DIRS})
-target_include_directories(db_abstraction_layer PUBLIC ${CMAKE_BINARY_DIR})
+target_include_directories(db_abstraction_layer PRIVATE ${PostgreSQL_INCLUDE_DIRS})
+target_include_directories(db_abstraction_layer PRIVATE ${CMAKE_BINARY_DIR})
+
+target_link_libraries(histogram PRIVATE db_abstraction_layer logger wasserstein)
 
 if (BUILD_CLOUD_TESTS)
     find_package(GTest REQUIRED)
