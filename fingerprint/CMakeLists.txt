@@ -21,6 +21,8 @@ add_library(thread_pool STATIC
         src/thread_pool/dispatch/dispatch.h
         src/thread_pool/callback/callback.cpp
         src/thread_pool/callback/callback.h
+
+        src/thread_pool/async_manager.h
 )
 
 add_library(request_manager STATIC

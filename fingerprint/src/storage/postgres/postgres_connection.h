@@ -10,6 +10,7 @@ namespace siren::cloud::postgres
     class PostgresConnection: public AbstractConnection
     {
         friend class PostgresCommand;
+
     public:
         explicit PostgresConnection(const std::string& connectionString);
 
@@ -29,4 +30,5 @@ namespace siren::cloud::postgres
         Connection m_connection;
     };
 
+    using DBConnectionPtr = std::shared_ptr<PostgresConnection>;
 }
