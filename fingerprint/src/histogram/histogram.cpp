@@ -135,13 +135,13 @@ namespace siren::cloud
 
         auto getOutliersOfFlatIndex = [&](const std::vector<float>& flatIndex, float threshold)
         {
-            auto scores = getModZScoreOfPoints(flatIndex);
+            auto scores = getMZScoreOfPoints(flatIndex);
             return composeOutlierMaps(std::move(scores), threshold);
         };
 
         auto getOutliersOfIndex = [&](const auto& index, const auto& dim, float threshold)
         {
-            auto scores = getModZScoreOfPoints(index, dim);
+            auto scores = getMZScoreOfPoints(index, dim);
             return composeOutlierMaps(std::move(scores), threshold);
         };
 

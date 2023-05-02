@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <numeric>
 #include <unordered_set>
 
 #include <boost/lambda/lambda.hpp>
@@ -188,19 +187,7 @@ namespace siren::cloud
         }
 
         template<typename T>
-        double getMZScoreOfPoints(const std::vector<T>& dist)
-        {
-            std::vector<std::pair<double, T>> res;
-            for (T point: dist)
-            {
-                double zMScore = getMZScoreOfPoint(dist, point);
-                res.emplace_back(zMScore, point);
-            }
-            return res;
-        }
-
-        template<typename T>
-        auto getModZScoreOfPoints(const std::vector<T>& dist)
+        auto getMZScoreOfPoints(const std::vector<T>& dist)
         {
             std::vector<std::pair<double, T>> res;
             for (T point: dist)
@@ -212,10 +199,10 @@ namespace siren::cloud
         }
 
         template<typename Index, typename Class, typename PropertyType>
-        auto getModZScoreOfPoints(const Index& index, PropertyType Class::*member)
+        auto getMZScoreOfPoints(const Index& index, PropertyType Class::*member)
         {
             std::vector<PropertyType> dist = flattenIndex(index, member);
-            return getModZScoreOfPoints<PropertyType>(dist);
+            return getMZScoreOfPoints<PropertyType>(dist);
         }
 
     };
