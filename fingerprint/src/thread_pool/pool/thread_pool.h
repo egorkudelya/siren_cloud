@@ -28,7 +28,7 @@ namespace siren::cloud
         template <typename Invocable>
         WaitableFuture submitTask(Invocable&& invocable, bool isWaiting=false)
         {
-            if (!m_shut_down && m_is_initialized)
+            if (!m_shutDown && m_isInitialized)
             {
                 size_t thisId = std::hash<std::thread::id>{}(std::this_thread::get_id());
                 if (m_primaryDispatch.isPoolId(thisId))
@@ -37,7 +37,7 @@ namespace siren::cloud
                 }
                 Task task(CallBack(std::move(invocable), thisId));
                 WaitableFuture future{std::move(task.getFuture()), isWaiting};
-                m_job_count++;
+                m_jobCount++;
                 m_primaryDispatch.pushTaskToLeastBusy(std::move(task));
                 return future;
             }
@@ -49,20 +49,20 @@ namespace siren::cloud
         void process();
 
     private:
-        size_t m_thread_count;
+        size_t m_threadCount;
         QueueDispatch m_primaryDispatch;
         std::vector<std::thread> m_threads;
-        bool m_shut_down{false};
-        bool m_is_initialized{false};
-        bool m_is_pausing{false};
-        bool m_is_graceful{false};
-        std::mutex m_pause_mtx;
-        std::mutex m_wait_mtx;
-        std::mutex m_pool_mtx;
-        std::condition_variable m_wait_cv;
-        std::condition_variable m_pause_cv;
-        std::atomic<int64_t> m_job_count{0};
-        std::atomic<int64_t> m_running_job_count{0};
+        bool m_shutDown{false};
+        bool m_isInitialized{false};
+        bool m_isPausing{false};
+        bool m_isGraceful{false};
+        std::mutex m_pauseMtx;
+        std::mutex m_waitMtx;
+        std::mutex m_poolMtx;
+        std::condition_variable m_waitCv;
+        std::condition_variable m_pauseCv;
+        std::atomic<int64_t> m_jobCount{0};
+        std::atomic<int64_t> m_runningJobCount{0};
     };
 
     using ThreadPoolPtr = std::shared_ptr<ThreadPool>;

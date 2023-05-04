@@ -35,18 +35,20 @@ namespace siren::cloud
 
     struct HistReturnType
     {
-        HistReturnType(HistStatus s);
-        HistReturnType(HistStatus s, SongIdType id, TimestampType ts);
+        HistReturnType(HistStatus status);
+        HistReturnType(HistStatus status, SongIdType id, TimestampType ts, float ws);
         explicit operator bool() const;
 
         HistStatus getStatus() const;
         SongIdType getSongId() const;
         TimestampType getTimestamp() const;
+        float getWassersteinDistance() const;
 
     private:
         HistStatus m_status;
-        SongIdType m_song_id{};
-        TimestampType m_timestamp{};
+        SongIdType m_song_id;
+        TimestampType m_timestamp;
+        float m_wassersteinDistance;
     };
 
 
