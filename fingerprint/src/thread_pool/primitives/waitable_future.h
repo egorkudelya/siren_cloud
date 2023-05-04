@@ -23,14 +23,16 @@ namespace siren::cloud
         bool valid() const;
 
     private:
-        struct Concept {
+        struct Concept
+        {
             virtual ~Concept() = default;
             virtual bool valid() const = 0;
             virtual void wait() = 0;
         };
 
         template<typename T>
-        struct Model final: Concept {
+        struct Model final: Concept
+        {
             explicit Model(T x)
                 : m_future(std::move(x))
             {

@@ -33,7 +33,7 @@ namespace siren::cloud::postgres
     {
         pqxx::pipeline pipe(m_work);
         std::vector<size_t> ids;
-        for (const auto& query: getQueries())
+        for (auto&& query: getQueries())
         {
             std::string sql = query.get("query");
             if (sql.empty())

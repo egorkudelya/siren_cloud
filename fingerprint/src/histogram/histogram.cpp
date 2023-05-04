@@ -4,14 +4,15 @@
 namespace siren::cloud
 {
 
-    HistReturnType::HistReturnType(HistStatus s)
-        : m_status(s)
+    HistReturnType::HistReturnType(HistStatus status)
+        : m_status(status)
     {
     }
-    HistReturnType::HistReturnType(HistStatus s, SongIdType id, TimestampType ts)
-        : m_status(s)
+    HistReturnType::HistReturnType(HistStatus status, SongIdType id, TimestampType ts, float ws)
+        : m_status(status)
         , m_song_id(id)
         , m_timestamp(ts)
+        , m_wassersteinDistance(ws)
     {
     }
 
@@ -33,6 +34,11 @@ namespace siren::cloud
     TimestampType HistReturnType::getTimestamp() const
     {
         return m_timestamp;
+    }
+
+    float HistReturnType::getWassersteinDistance() const
+    {
+        return m_wassersteinDistance;
     }
 
     Histogram::Histogram(const DBCommandPtr& dbReturnPtr, const FingerprintType& fingerprint)
@@ -197,9 +203,9 @@ namespace siren::cloud
                     stream << " Found a song with song id: " << it->second <<
                               " peak: " << it->first <<
                               " w. distance: " << wassDistance <<
-                              " timestamp: " << ts << std::endl;
+                              " last ts: " << ts << std::endl;
                     Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, stream.str());
-                    return HistReturnType{HistStatus::OK, it->second, ts};
+                    return HistReturnType{HistStatus::OK, it->second, ts, wassDistance};
                 }
             }
 

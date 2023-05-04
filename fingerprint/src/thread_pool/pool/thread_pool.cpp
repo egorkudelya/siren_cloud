@@ -4,9 +4,9 @@ namespace siren::cloud
 {
 
     ThreadPool::ThreadPool(size_t numberOfQueues, size_t threadsPerQueue, bool isGraceful)
-        : m_is_graceful(isGraceful)
+        : m_isGraceful(isGraceful)
     {
-        std::unique_lock lock(m_pool_mtx);
+        std::unique_lock lock(m_poolMtx);
         for (size_t i = 0; i < numberOfQueues; i++)
         {
             auto queue = std::make_shared<Queue>(i);
@@ -22,8 +22,8 @@ namespace siren::cloud
                 m_threads.emplace_back(std::move(thread));
             }
         }
-        m_thread_count = numberOfQueues * threadsPerQueue;
-        m_is_initialized = true;
+        m_threadCount = numberOfQueues * threadsPerQueue;
+        m_isInitialized = true;
         Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "ThreadPool has been initialized");
     }
 
@@ -32,70 +32,70 @@ namespace siren::cloud
         size_t thisId = std::hash<std::thread::id>{}(std::this_thread::get_id());
         while (true)
         {
-            if (m_is_pausing)
+            if (m_isPausing)
             {
-                std::unique_lock lock(m_pause_mtx);
-                m_pause_cv.wait(lock, [&] { return !m_is_pausing; });
+                std::unique_lock lock(m_pauseMtx);
+                m_pauseCv.wait(lock, [&] { return !m_isPausing; });
             }
-            else if (m_shut_down)
+            else if (m_shutDown)
             {
                 return;
             }
             Task task;
-            if (m_is_initialized)
+            if (m_isInitialized)
             {
                 task = m_primaryDispatch.extractTaskByThreadId(thisId);
             }
             if (task.valid())
             {
-                m_job_count--;
-                m_running_job_count++;
+                m_jobCount--;
+                m_runningJobCount++;
                 task();
-                m_running_job_count--;
-                m_wait_cv.notify_one();
+                m_runningJobCount--;
+                m_waitCv.notify_one();
             }
         }
     }
 
     void ThreadPool::waitForAll()
     {
-        std::unique_lock lock(m_wait_mtx);
-        m_wait_cv.wait(lock, [&] { return m_job_count == 0 && m_running_job_count == 0; });
+        std::unique_lock lock(m_waitMtx);
+        m_waitCv.wait(lock, [&] { return m_jobCount == 0 && m_runningJobCount == 0; });
     }
 
     void ThreadPool::pause()
     {
-        m_is_pausing = true;
+        m_isPausing = true;
     }
 
     void ThreadPool::resume()
     {
-        m_is_pausing = false;
-        m_pause_cv.notify_all();
+        m_isPausing = false;
+        m_pauseCv.notify_all();
     }
 
     size_t ThreadPool::getCurrentJobCount() const
     {
-        return m_job_count;
+        return m_jobCount;
     }
 
     bool ThreadPool::areAllThreadsBusy() const
     {
-        return m_running_job_count == m_thread_count;
+        return m_runningJobCount == m_threadCount;
     }
 
     ThreadPool::~ThreadPool()
     {
-        std::unique_lock lock(m_pool_mtx);
-        if (m_is_graceful)
+        std::unique_lock lock(m_poolMtx);
+        if (m_isGraceful)
         {
             waitForAll();
-            if (m_job_count != 0 || m_running_job_count != 0)
+            if (m_jobCount != 0 || m_runningJobCount != 0)
             {
                 Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "waitForAll didn't wait for all jobs to finish execution");
             }
         }
-        m_shut_down = true;
+        m_shutDown = true;
         m_primaryDispatch.clear();
         for (auto&& thread: m_threads)
         {
@@ -104,7 +104,7 @@ namespace siren::cloud
                 thread.join();
             }
         }
-        m_is_initialized = false;
+        m_isInitialized = false;
         Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "ThreadPool has been shut down");
     }
 

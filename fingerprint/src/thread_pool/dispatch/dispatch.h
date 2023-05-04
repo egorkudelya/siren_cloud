@@ -38,8 +38,8 @@ namespace siren::cloud
         QueuePtr extractLeastBusy();
 
     private:
-        mutable std::shared_mutex m_set_mtx;
-        mutable std::shared_mutex m_map_mtx;
+        mutable std::shared_mutex m_setMtx;
+        mutable std::shared_mutex m_mapMtx;
         Set m_set;
         Map m_map;
     };

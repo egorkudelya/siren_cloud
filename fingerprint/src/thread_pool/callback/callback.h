@@ -23,14 +23,16 @@ namespace siren::cloud
         size_t getSenderId() const;
 
     private:
-        struct Concept {
+        struct Concept
+        {
             virtual ~Concept() = default;
             virtual std::unique_ptr<Concept> copy() const = 0;
             virtual void call() const = 0;
         };
 
         template<typename Invocable>
-        struct Model: Concept {
+        struct Model: Concept
+        {
             Model(Invocable invocable)
                 : m_invocable(std::move(invocable))
             {
