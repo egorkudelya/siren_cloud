@@ -5,11 +5,15 @@ set(CMAKE_CXX_STANDARD 17)
 option(BUILD_CLOUD_TESTS "Build Siren Cloud with tests" TRUE)
 
 add_subdirectory("/usr/local/include/siren_core" ${CMAKE_CURRENT_BINARY_DIR}/siren_core)
+add_subdirectory(proto)
 set(PostgreSQL_ROOT "/var/lib/postgresql")
 
-add_library(thread_pool STATIC
+add_library(common STATIC
         src/common/common.cpp
         src/common/common.h
+        )
+
+add_library(thread_pool STATIC
         src/common/safe_queue.h
 
         src/thread_pool/primitives/task.h
@@ -73,6 +77,23 @@ add_library(engine STATIC
         src/engine/engine.cpp
         )
 
+add_library(server STATIC
+        src/grpc/server.h
+        src/grpc/calldata.h
+        src/grpc/collector.h
+        src/grpc/collector.cpp
+
+        src/api/load_track.h
+        src/api/load_track.cpp
+        src/api/find_track.h
+        src/api/find_track.cpp
+        src/api/delete_track.h
+        src/api/delete_track.cpp
+        src/api/api_umbrella.h
+        src/service_umbrella.h
+        src/service_umbrella.cpp
+        )
+
 add_library(wasserstein STATIC "/usr/local/include/wasserstein/wasserstein.h")
 set_target_properties(wasserstein PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -86,8 +107,9 @@ if(Boost_FOUND)
     target_include_directories(histogram PRIVATE ${Boost_INCLUDE_DIRS})
 endif()
 
+target_link_libraries(common PUBLIC siren_core)
 target_link_libraries(logger PRIVATE spdlog::spdlog)
-target_link_libraries(thread_pool PUBLIC logger siren_core)
+target_link_libraries(thread_pool PUBLIC logger common)
 target_link_libraries(db_abstraction_layer PUBLIC logger request_manager thread_pool nlohmann_json::nlohmann_json cpr::cpr ${PQXX_LIB} ${PQ_LIB})
 
 target_include_directories(db_abstraction_layer PRIVATE ${PostgreSQL_INCLUDE_DIRS})
@@ -95,6 +117,11 @@ target_include_directories(db_abstraction_layer PRIVATE ${CMAKE_BINARY_DIR})
 
 target_link_libraries(histogram PRIVATE db_abstraction_layer logger wasserstein)
 target_link_libraries(engine PRIVATE db_abstraction_layer logger histogram)
+target_link_libraries(server PUBLIC engine siren_proto logger siren_core)
+target_include_directories(server PUBLIC ${CMAKE_BINARY_DIR})
+
+add_executable(main main.cpp)
+target_link_libraries(main PUBLIC server)
 
 if (BUILD_CLOUD_TESTS)
     find_package(GTest REQUIRED)
