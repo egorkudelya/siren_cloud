@@ -476,6 +476,7 @@ namespace siren::cloud
                     Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Failed to delete fingerprint from primary");
                 }
             }, true);
+
             WaitableFuture elasticFuture = AsyncManager::instance().submitTask([&]{
                 markAsyncStart();
                 isElasticSuccess = purgeTrackFingerprintFromCache(songId);
@@ -494,10 +495,15 @@ namespace siren::cloud
         bool cacheCheck;
         bool isCacheOk = isSongIdInCache(cacheCheck, songId);
 
+        if (!isCacheOk || cacheCheck)
+        {
+           return false;
+        }
+
         bool primaryCheck;
         bool isPrimaryOk = isSongIdInPrimary(primaryCheck, songId);
 
-        if (!isCacheOk || !isPrimaryOk || cacheCheck || primaryCheck)
+        if (!isPrimaryOk || primaryCheck)
         {
             return false;
         }

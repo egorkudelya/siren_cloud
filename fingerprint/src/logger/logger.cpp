@@ -34,6 +34,7 @@ namespace siren::cloud
                 m_logger->critical(completeMessage.str());
                 throw std::runtime_error(completeMessage.str());
         }
+        m_logger->flush();
     }
 
 }

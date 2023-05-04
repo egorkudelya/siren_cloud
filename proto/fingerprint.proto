@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+package fingerprint;
+
+option go_package = "./fingerprint";
+
+message FindTrackByFingerprintRequest {
+  map<uint64, uint64> fingerprint = 1;
+}
+
+message FindTrackByFingerprintResponse {
+  string song_metadata = 1;
+}
+
+message LoadTrackByUrlRequest {
+  string url = 1;
+  uint64 song_id = 2;
+  bool is_caching = 3;
+}
+
+message BasicIsSuccessResponse {
+  bool success = 1;
+}
+
+message DeleteTrackByIdRequest {
+  uint64 song_id = 1;
+}
+
+service SirenFingerprint {
+
+  rpc FindTrackByFingerprint (FindTrackByFingerprintRequest) returns (FindTrackByFingerprintResponse) {
+    option (google.api.http) = {
+      post: "/v1/findTrack"
+      body: "*"
+    };
+  }
+
+  rpc LoadTrackByUrl (LoadTrackByUrlRequest) returns (BasicIsSuccessResponse) {
+    option (google.api.http) = {
+      post: "/v1/loadTrack"
+      body: "*"
+    };
+  }
+
+  rpc DeleteTrackById (DeleteTrackByIdRequest) returns (BasicIsSuccessResponse) {
+    option (google.api.http) = {
+      post: "/v1/deleteTrack"
+      body: "*"
+    };
+  }
+
+}
