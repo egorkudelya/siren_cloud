@@ -83,7 +83,6 @@ namespace siren::cloud
                     if (!sharedCollector || !sharedCollector->requestCleanUpByThis(this))
                     {
                         Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Could not clean up calldata");
-                        break;
                     }
                     break;
                 }
