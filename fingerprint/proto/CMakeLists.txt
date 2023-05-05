@@ -1,10 +1,8 @@
-cmake_minimum_required(VERSION 3.7)
-set(CMAKE_CXX_STANDARD 17)
+cmake_minimum_required(VERSION 3.6)
 
 project(siren_proto)
 
 find_package(absl CONFIG REQUIRED)
-
 find_program(GRPC_CPP_PLUGIN NAMES grpc_cpp_plugin)
 find_library(GRPC_LIBRARY NAMES grpc)
 find_library(GRPCPP_LIBRARY NAMES grpc++)

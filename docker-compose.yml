@@ -220,7 +220,7 @@ services:
   fingerprint_serv:
     build:
       context: .
-      dockerfile: Dockerfile-fingerprint
+      dockerfile: fingerprint/Dockerfile-fingerprint
     container_name: fingerprint_serv
     volumes:
       - .:/siren/
@@ -249,6 +249,7 @@ services:
         "export SERV_QUEUES=${SERV_QUEUES}" \
         "export SERV_THREADS_PER_QUEUE=${SERV_THREADS_PER_QUEUE}" \
         "export SERV_ADDRESS=${SERV_ADDRESS}" \
+        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT} " \
         "export POSTGRES_POOL_SIZE=${POSTGRES_POOL_SIZE}" \
         "export ELASTIC_POOL_SIZE=${ELASTIC_POOL_SIZE}" \
         "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" > /home/user/.bashrc

@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 option(BUILD_CLOUD_TESTS "Build Siren Cloud with tests" TRUE)
 
 add_subdirectory("/usr/local/include/siren_core" ${CMAKE_CURRENT_BINARY_DIR}/siren_core)
-add_subdirectory(proto)
 set(PostgreSQL_ROOT "/var/lib/postgresql")
 
 add_library(common STATIC
@@ -117,6 +116,8 @@ target_include_directories(db_abstraction_layer PRIVATE ${CMAKE_BINARY_DIR})
 
 target_link_libraries(histogram PRIVATE db_abstraction_layer logger wasserstein)
 target_link_libraries(engine PRIVATE db_abstraction_layer logger histogram)
+
+add_subdirectory(proto)
 target_link_libraries(server PUBLIC engine siren_proto logger siren_core)
 target_include_directories(server PUBLIC ${CMAKE_BINARY_DIR})
 
