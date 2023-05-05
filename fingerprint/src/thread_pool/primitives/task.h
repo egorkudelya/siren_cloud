@@ -2,39 +2,42 @@
 #include <future>
 #include "../callback/callback.h"
 
-template <typename T>
-class PackagedTask
+namespace siren::cloud
 {
-public:
-    PackagedTask() = default;
-    PackagedTask(CallBack&& callback)
+    template<typename T>
+    class PackagedTask
     {
-        m_id = callback.getSenderId();
-        std::packaged_task<T()> task(std::move(callback));
-        m_task = std::move(task);
-    }
+    public:
+        PackagedTask() = default;
+        PackagedTask(CallBack&& callback)
+        {
+            m_id = callback.getSenderId();
+            std::packaged_task<T()> task(std::move(callback));
+            m_task = std::move(task);
+        }
 
-    T operator()()
-    {
-       return m_task();
-    }
+        T operator()()
+        {
+            return m_task();
+        }
 
-    auto getFuture()
-    {
-        return m_task.get_future();
-    }
+        auto getFuture()
+        {
+            return m_task.get_future();
+        }
 
-    size_t getId() const
-    {
-        return m_id;
-    }
+        size_t getId() const
+        {
+            return m_id;
+        }
 
-    bool valid() const
-    {
-        return m_task.valid();
-    }
+        bool valid() const
+        {
+            return m_task.valid();
+        }
 
-private:
-    size_t m_id;
-    std::packaged_task<T()> m_task;
-};
+    private:
+        size_t m_id{0};
+        std::packaged_task<T()> m_task;
+    };
+}

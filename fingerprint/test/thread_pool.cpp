@@ -18,12 +18,11 @@ auto job = [] {
 
 TEST(Pool, TestPause)
 {
-    auto pool = std::make_shared<ThreadPool>(3, 3);
+    auto pool = std::make_shared<siren::cloud::ThreadPool>(3, 3);
     auto thread = std::thread([&] {
         for (int i = 0; i < 1000; i++)
         {
             pool->submitTask(job);
-            std::cout << "Adding tasks" << std::endl;
         }
     });
 
@@ -36,12 +35,11 @@ TEST(Pool, TestPause)
 
 TEST(Pool, TestGracefulShutdown)
 {
-    auto pool = std::make_shared<ThreadPool>(3, 2, true);
+    auto pool = std::make_shared<siren::cloud::ThreadPool>(3, 2, true);
     auto thread = std::thread([&] {
-        for (int i = 0; i < 500; i++)
+        for (int i = 0; i < 3000; i++)
         {
             pool->submitTask(job);
-            std::cout << "Adding tasks" << std::endl;
         }
     });
 
@@ -54,12 +52,11 @@ TEST(Pool, TestGracefulShutdown)
 
 TEST(Pool, TestShutdown)
 {
-    auto pool = std::make_shared<ThreadPool>(2, 4, false);
+    auto pool = std::make_shared<siren::cloud::ThreadPool>(2, 4, false);
     auto thread = std::thread([&] {
         for (int i = 0; i < 3000; i++)
         {
             pool->submitTask(job);
-            std::cout << "Adding tasks" << std::endl;
         }
     });
 
@@ -76,7 +73,7 @@ TEST(AsyncManager, TestNoWait)
 
 TEST(AsyncManager, TestWait)
 {
-    std::vector<WaitableFuture> futures;
+    std::vector<siren::cloud::WaitableFuture> futures;
     for (int i = 0; i < 1000; i++)
     {
         futures.emplace_back(siren::cloud::AsyncManager::instance().submitTask(job, true));
