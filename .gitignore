@@ -2,3 +2,15 @@
 /fingerprint/cmake-build-release/
 /fingerprint/audio/
 /fingerprint/logs/
+/metadata/.elixir_ls/
+/metadata/.history/
+/metadata/_build/
+/metadata/cover/
+/metadata/deps/
+/metadata/doc/
+/metadata/.fetch
+/metadata/erl_crash.dump
+/metadata/*.ez
+/metadata/tmp/
+/metadata/metadata-*.tar
+/metadata/priv/static
