@@ -220,7 +220,7 @@ services:
   fingerprint_serv:
     build:
       context: .
-      dockerfile: fingerprint/Dockerfile-fingerprint
+      dockerfile: fingerprint/Dockerfile
     container_name: fingerprint_serv
     volumes:
       - .:/siren/
@@ -253,6 +253,28 @@ services:
         "export POSTGRES_POOL_SIZE=${POSTGRES_POOL_SIZE}" \
         "export ELASTIC_POOL_SIZE=${ELASTIC_POOL_SIZE}" \
         "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" > /home/user/.bashrc
+        cp /home/user/.bashrc /home/user/.profile
+        /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
+
+  metadata_serv:
+    build:
+      context: .
+      dockerfile: metadata/Dockerfile
+    container_name: metadata_serv
+    volumes:
+      - .:/siren/
+    network_mode: "host"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "export METADATA_POSTGRES_USER=${METADATA_POSTGRES_USER}" \
+        "export METADATA_POSTGRES_PASSWORD=${METADATA_POSTGRES_PASSWORD}" \
+        "export METADATA_POSTGRES_DB_NAME=${METADATA_POSTGRES_DB_NAME}" \
+        "export METADATA_POSTGRES_DB_POOL_SIZE=${METADATA_POSTGRES_DB_POOL_SIZE}" \
+        "export METADATA_HOST=${METADATA_HOST}" \
+        "export METADATA_PORT=${METADATA_PORT}" \
+        "export METADATA_SECRET_KEY_BASE=${METADATA_SECRET_KEY_BASE}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
 
