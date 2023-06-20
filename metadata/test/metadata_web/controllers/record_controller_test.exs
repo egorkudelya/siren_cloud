@@ -1,13 +1,16 @@
 defmodule MetadataWeb.RecordControllerTest do
   use MetadataWeb.ConnCase
+  use ExUnit.Case
+  use ExVCR.Mock, adapter: ExVCR.Adapter.Hackney
 
   import Metadata.LibraryFixtures
   alias Metadata.Library.Record
 
+  @audio_url "https://cdn.pixabay.com/download/audio/2023/03/23/audio_5dae37894b.mp3?filename=Daylight.mp3%5C"
   @create_attrs %{
     "id" => 1,
     "art_url" => "some art_url",
-    "audio_url" => "some audio_url",
+    "audio_url" => @audio_url,
     "bit_rate" => 42,
     "date_recordered" => ~D[2023-05-11],
     "duration" => 42,
@@ -17,7 +20,7 @@ defmodule MetadataWeb.RecordControllerTest do
 
   @update_attrs %{
    "art_url" => "some updated art_url",
-    "audio_url" => "some updated audio_url",
+    "audio_url" => @audio_url,
     "bit_rate" => 43,
     "date_recordered" => ~D[2023-05-12],
     "duration" => 43,
@@ -40,6 +43,7 @@ defmodule MetadataWeb.RecordControllerTest do
   }
 
   setup %{conn: conn} do
+    HTTPoison.start()
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
@@ -56,29 +60,32 @@ defmodule MetadataWeb.RecordControllerTest do
       genre = genre_fixture()
       album = album_fixture()
 
-      conn = post(conn, ~p"/api/records", record: Map.merge(@create_attrs,
-      %{"artists" => [artist.id],
+      use_cassette "post_record_success" do
+        conn = post(conn, ~p"/api/records", record: Map.merge(@create_attrs,
+        %{"artists" => [artist.id],
         "albums" => [album.id],
         "genres" => [genre.id]
        }))
-
       assert %{"id" => id} = json_response(conn, 201)["data"]
       conn = get(conn, ~p"/api/records/#{id}")
 
       assert %{
                "id" => ^id,
                "art_url" => "some art_url",
-               "audio_url" => "some audio_url",
+               "audio_url" => @audio_url,
                "bit_rate" => 42,
                "date_recordered" => "2023-05-11",
                "duration" => 42,
                "name" => "some name"
              } = json_response(conn, 200)["data"]
+      end
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, ~p"/api/records", record: @invalid_attrs)
-      assert json_response(conn, 400)["errors"] != %{}
+      use_cassette "post_record_failure" do
+        conn = post(conn, ~p"/api/records", record: @invalid_attrs)
+        assert json_response(conn, 400)["errors"] != %{}
+      end
     end
   end
 
@@ -102,7 +109,7 @@ defmodule MetadataWeb.RecordControllerTest do
       assert %{
                "id" => ^id,
                "art_url" => "some updated art_url",
-               "audio_url" => "some updated audio_url",
+               "audio_url" => @audio_url,
                "bit_rate" => 43,
                "date_recordered" => "2023-05-12",
                "duration" => 43,
@@ -120,11 +127,13 @@ defmodule MetadataWeb.RecordControllerTest do
     setup [:create_record]
 
     test "deletes chosen record", %{conn: conn, record: record} do
-      conn = delete(conn, ~p"/api/records/#{record}")
-      assert response(conn, 204)
+      use_cassette "delete_record_success" do
+        conn = delete(conn, ~p"/api/records/#{record}")
+        assert response(conn, 204)
 
-      conn = get(conn, ~p"/api/records/#{record}")
-      assert response(conn, 404)
+        conn = get(conn, ~p"/api/records/#{record}")
+        assert response(conn, 404)
+      end
     end
   end
 

@@ -1,6 +1,7 @@
 defmodule MetadataWeb.RecordController do
   use MetadataWeb, :controller
   alias Metadata.{Library, Library.Record}
+  alias FingerprintComm
 
   action_fallback MetadataWeb.FallbackController
 
@@ -13,16 +14,24 @@ defmodule MetadataWeb.RecordController do
     Map.get(record_params, "artists")
     |> case do
       res when res in [nil, []] ->
-        {:error, :not_found}
+        {:error, :bad_request}
 
       _ ->
         with {:ok, %Record{} = record} <- Library.create_record(record_params) do
-          conn
-          |> put_status(:created)
-          |> render(:show, record: record)
+          FingerprintComm.post_record(Map.get(record, :id), Map.get(record, :audio_url), true)
+          |> case do
+            true ->
+              conn
+              |> put_status(:created)
+              |> render(:show, record: record)
+
+            _ ->
+              Library.delete_record(record)
+              {:error, :internal_server_error}
+          end
         else
           _ ->
-          {:error, :bad_request}
+            {:error, :bad_request}
         end
     end
   end
@@ -52,15 +61,22 @@ defmodule MetadataWeb.RecordController do
   end
 
   def delete(conn, %{"id" => id}) do
-    Library.get_record(id)
+    FingerprintComm.delete_record(id)
     |> case do
-      nil ->
-        {:error, :not_found}
+      true ->
+        Library.get_record(id)
+        |> case do
+          nil ->
+            {:error, :not_found}
 
-      record ->
-        with {:ok, %Record{}} <- Library.delete_record(record) do
-          send_resp(conn, :no_content, "")
+          record ->
+            with {:ok, %Record{}} <- Library.delete_record(record) do
+              send_resp(conn, :no_content, "")
+            end
         end
+
+      _ ->
+        {:error, :internal_server_error}
     end
   end
 end

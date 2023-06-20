@@ -27,4 +27,11 @@ defmodule MetadataWeb.FallbackController do
     |> put_view(html: MetadataWeb.ErrorHTML, json: MetadataWeb.ErrorJSON)
     |> render(:"400")
   end
+
+  def call(conn, {:error, :internal_server_error}) do
+    conn
+    |> put_status(:internal_server_error)
+    |> put_view(html: MetadataWeb.ErrorHTML, json: MetadataWeb.ErrorJSON)
+    |> render(:"500")
+  end
 end

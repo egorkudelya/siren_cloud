@@ -30,8 +30,10 @@ namespace siren::cloud
         auto& req = getRequest();
         auto& reply = getReply();
 
-        SongIdType songId = req.song_id();
-        bool isSuccess = m_engine->purgeFingerprintBySongId(songId);
-        reply.set_success(isSuccess);
+        std::stringstream msg;
+        msg << "Deleting fingerprint of song with id " << req.song_id();
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
+
+        reply.set_success(m_engine->purgeFingerprintBySongId(req.song_id()));
     }
 }

@@ -248,11 +248,14 @@ services:
         "export TP_THREADS_PER_QUEUE=${TP_THREADS_PER_QUEUE}" \
         "export SERV_QUEUES=${SERV_QUEUES}" \
         "export SERV_THREADS_PER_QUEUE=${SERV_THREADS_PER_QUEUE}" \
-        "export SERV_ADDRESS=${SERV_ADDRESS}" \
-        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT} " \
+        "export FINGERPRINT_ADDRESS=${FINGERPRINT_ADDRESS}" \
+        "export FINGERPRINT_PORT=${FINGERPRINT_PORT}" \
+        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT}" \
         "export POSTGRES_POOL_SIZE=${POSTGRES_POOL_SIZE}" \
         "export ELASTIC_POOL_SIZE=${ELASTIC_POOL_SIZE}" \
-        "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" > /home/user/.bashrc
+        "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" \
+        "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
+        "export METADATA_PORT=${METADATA_PORT}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
 
@@ -272,8 +275,10 @@ services:
         "export METADATA_POSTGRES_PASSWORD=${METADATA_POSTGRES_PASSWORD}" \
         "export METADATA_POSTGRES_DB_NAME=${METADATA_POSTGRES_DB_NAME}" \
         "export METADATA_POSTGRES_DB_POOL_SIZE=${METADATA_POSTGRES_DB_POOL_SIZE}" \
-        "export METADATA_HOST=${METADATA_HOST}" \
+        "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
         "export METADATA_PORT=${METADATA_PORT}" \
+        "export FINGERPRINT_ADDRESS=${FINGERPRINT_ADDRESS}" \
+        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT}" \
         "export METADATA_SECRET_KEY_BASE=${METADATA_SECRET_KEY_BASE}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren

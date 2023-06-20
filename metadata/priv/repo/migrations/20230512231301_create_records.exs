@@ -17,6 +17,5 @@ defmodule Metadata.Repo.Migrations.CreateRecords do
     end
 
     create index(:records, [:credits_id, :album_record_id, :record_genre_id])
-    create unique_index(:records, [:id])
   end
 end

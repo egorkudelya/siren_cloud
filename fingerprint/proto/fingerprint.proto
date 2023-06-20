@@ -11,7 +11,7 @@ message FindTrackByFingerprintRequest {
 }
 
 message FindTrackByFingerprintResponse {
-  string song_metadata = 1;
+  string data = 1;
 }
 
 message LoadTrackByUrlRequest {

@@ -5,6 +5,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get -y install tzdata
 RUN apt-get update \
   && apt-get install -y ssh \
       build-essential \
+      vim \
       sudo \
       git \
       bash \
@@ -28,7 +29,9 @@ WORKDIR /home/user/siren/metadata
 
 #RUN export MIX_ENV=prod
 RUN mix local.hex --force
-RUN mix do compile
+RUN mix deps.get
+RUN mix local.rebar --force
+RUN mix compile
 
 RUN ( \
     echo 'LogLevel DEBUG2'; \

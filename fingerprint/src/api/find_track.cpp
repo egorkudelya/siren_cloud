@@ -1,10 +1,12 @@
 #include "find_track.h"
+#include "../common/request_manager.h"
 
 namespace siren::cloud
 {
     FindTrackByFingerprintCallData::FindTrackByFingerprintCallData(EnginePtr& engine, SirenFingerprint::AsyncService* service, const CompletionQueuePtr& completionQueue, WeakCollectorPtr collection)
         : CallData(engine, service, completionQueue, collection)
     {
+        m_metadataAddr = siren::getenv("METADATA_ADDRESS") + ':' + siren::getenv("METADATA_PORT") + "/api/records/";
         this->proceed();
     }
 
@@ -33,9 +35,22 @@ namespace siren::cloud
         auto& map = req.fingerprint();
         FingerprintType fingerprint(map.begin(), map.end());
         bool isSuccess = false;
-        auto res = m_engine->findSongIdByFingerprint(isSuccess, std::move(fingerprint));
+        auto engineRes = m_engine->findSongIdByFingerprint(isSuccess, std::move(fingerprint));
+        if (engineRes.getStatus() != HistStatus::OK)
+        {
+            Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "Could not find song by provided fingerprint");
+            reply.set_data(R"({"errors":{"detail":"Not Found"}})");
+            return;
+        }
 
-        // TODO
-        reply.set_song_metadata("");
+        std::string url = m_metadataAddr + std::to_string(engineRes.getSongId());
+        HttpResponse metadataRes = RequestManager::Get(url, {}, "Content-Type: application/json", {});
+        if (metadataRes.status_code == 200)
+        {
+            reply.set_data(metadataRes.text);
+            return;
+        }
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "Failed to obtain a response from Fingerprint service");
+        reply.set_data(R"({"errors":{"detail":"Internal server error"}})");
     }
 }

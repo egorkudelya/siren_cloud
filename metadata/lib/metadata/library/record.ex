@@ -2,9 +2,8 @@ defmodule Metadata.Library.Record do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @serializable_fields [:id, :name, :art_url, :audio_url, :bit_rate, :date_recordered, :duration]
+  @serializable_fields [:name, :art_url, :audio_url, :bit_rate, :date_recordered, :duration]
 
-  @primary_key {:id, :id, autogenerate: false}
   @derive {Jason.Encoder, only: @serializable_fields}
   schema "records" do
     field :art_url, :string
@@ -43,7 +42,6 @@ defmodule Metadata.Library.Record do
     record
     |> cast(attrs, @serializable_fields)
     |> validate_required(@serializable_fields)
-    |> unique_constraint(:id, name: "records_pkey")
     |> put_assoc(:artists, artists)
     |> put_assoc(:albums, albums)
     |> put_assoc(:genres, genres)
@@ -53,7 +51,6 @@ defmodule Metadata.Library.Record do
     record
     |> cast(attrs, @serializable_fields)
     |> validate_required(@serializable_fields)
-    |> unique_constraint(:id, name: "records_pkey")
     |> put_assoc(:artists, artists)
     |> put_assoc(:genres, genres)
   end
@@ -62,7 +59,6 @@ defmodule Metadata.Library.Record do
     record
     |> cast(attrs, @serializable_fields)
     |> validate_required(@serializable_fields)
-    |> unique_constraint(:id, name: "records_pkey")
     |> put_assoc(:albums, albums)
     |> put_assoc(:genres, genres)
   end

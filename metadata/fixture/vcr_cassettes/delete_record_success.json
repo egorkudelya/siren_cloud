@@ -1,0 +1,27 @@
+[
+  {
+    "request": {
+      "body": "{\"song_id\":\"244\"}",
+      "headers": {
+        "Content-type": "application/json"
+      },
+      "method": "post",
+      "options": [],
+      "request_body": "",
+      "url": "http://144.76.91.58:50056/v1/deleteTrack"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"success\":true}",
+      "headers": {
+        "Content-Type": "application/json",
+        "Grpc-Metadata-Content-Type": "application/grpc",
+        "Grpc-Metadata-Grpc-Accept-Encoding": "identity, deflate, gzip",
+        "Date": "Tue, 20 Jun 2023 10:36:36 GMT",
+        "Content-Length": "16"
+      },
+      "status_code": 200,
+      "type": "ok"
+    }
+  }
+]
