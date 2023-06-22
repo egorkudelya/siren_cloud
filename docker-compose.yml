@@ -283,6 +283,36 @@ services:
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
 
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    environment:
+      - NGINX_PORT=${NGINX_PORT}
+      - BASIC_USER=${BASIC_USER}
+      - BASIC_PASSWORD=${BASIC_PASSWORD}
+      - METADATA_PORT=${METADATA_PORT}
+      - FINGERPRINT_PORT=${GRPC_PROXY_PORT}
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.conf
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+    depends_on:
+      - fingerprint_serv
+      - metadata_serv
+    network_mode: "host"
+    volumes:
+      - /ssl/siren:/ssl/
+      - /home/user/siren/shared_auth.conf/:/etc/nginx/shared_auth.conf
+      - /home/user/siren/nginx.conf.conf/:/etc/nginx/templates/nginx.conf.conf
+    command:
+      - /bin/sh
+      - -c
+      - |
+        rm -rf /etc/nginx/.htpasswd
+        echo -n "${BASIC_USER}:" >> /etc/nginx/.htpasswd
+        openssl passwd -6 ${BASIC_PASSWORD} >> /etc/nginx/.htpasswd
+        /docker-entrypoint.d/20-envsubst-on-templates.sh
+        nginx -g "daemon off;"
+
 volumes:
   certs:
     driver: local
