@@ -42,7 +42,7 @@ namespace siren::cloud
             {
                 std::stringstream err;
                 err << "Failed to delete fingerprint by song id " << songId;
-                Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__, err.str());
+                Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, err.str());
                 return;
             }
 
