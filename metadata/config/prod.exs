@@ -1,0 +1,26 @@
+import Config
+
+config :metadata, Metadata.Repo,
+  username: System.get_env("METADATA_POSTGRES_USER"),
+  password: System.get_env("METADATA_POSTGRES_PASSWORD"),
+  hostname: System.get_env("METADATA_ADDRESS"),
+  database: System.get_env("METADATA_POSTGRES_DB_NAME"),
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: false,
+  pool_size: System.get_env("METADATA_POSTGRES_DB_POOL_SIZE")
+
+config :metadata, MetadataWeb.Endpoint,
+  http: [ip: {127, 0, 0, 1}, port: System.get_env("METADATA_PORT")],
+  check_origin: false,
+  code_reloader: true,
+  debug_errors: true,
+  secret_key_base: System.get_env("METADATA_SECRET_KEY_BASE"),
+  watchers: []
+
+config :metadata, dev_routes: true
+
+config :logger, :console, format: "[$level] $message\n"
+
+config :phoenix, :stacktrace_depth, 10
+
+config :phoenix, :plug_init_mode, :runtime

@@ -30,4 +30,18 @@ CREATE_TABLE_SQL="CREATE TABLE IF NOT EXISTS ${table_name} (
 
 CREATE_INDEX_SQL="CREATE UNIQUE INDEX IF NOT EXISTS ${index_name} ON ${table_name} USING btree(hash, song_id) WITH (fillfactor=100);"
 
-PGPASSWORD="${POSTGRES_PASSWORD}" psql -d "host=$pg_host port=${POSTGRES_PORT} dbname=${db_name} user=${POSTGRES_USER}" -c "${CREATE_TABLE_SQL}" -c "${CREATE_INDEX_SQL}"
+CREATE_FUNCTION_SQL='CREATE OR REPLACE FUNCTION find_song_id(incoming_song_id INTEGER) RETURNS BOOLEAN AS $$
+                     DECLARE
+                       exists BOOLEAN;
+                          BEGIN
+                             LOCK TABLE fingerprint IN ROW EXCLUSIVE MODE;
+                             SELECT EXISTS (SELECT 1 from fingerprint WHERE song_id = incoming_song_id) INTO exists;
+                     IF NOT exists THEN
+                             INSERT INTO fingerprint(hash, song_id, timestamp) VALUES (-1, incoming_song_id, -1);
+                     END IF;
+                            RETURN exists;
+                          END;
+                          $$
+                     LANGUAGE plpgsql;'
+
+PGPASSWORD="${POSTGRES_PASSWORD}" psql -d "host=$pg_host port=${POSTGRES_PORT} dbname=${db_name} user=${POSTGRES_USER}" -c "${CREATE_TABLE_SQL}" -c "${CREATE_INDEX_SQL}" -c "${CREATE_FUNCTION_SQL}"

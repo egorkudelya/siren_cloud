@@ -30,11 +30,10 @@ namespace siren::cloud
         auto& req = getRequest();
         auto& reply = getReply();
 
-        SongIdType songId = req.song_id();
-        std::string url = req.url();
-        bool isCaching = req.is_caching();
+        std::stringstream msg;
+        msg << "Loading song with id " << req.song_id();
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
 
-        bool isSuccess = m_engine->loadTrackByUrl(url, songId, isCaching);
-        reply.set_success(isSuccess);
+        reply.set_success(m_engine->loadTrackByUrl(req.url(), req.song_id(), req.is_caching()));
     }
 }

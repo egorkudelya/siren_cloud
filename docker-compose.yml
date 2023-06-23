@@ -220,7 +220,7 @@ services:
   fingerprint_serv:
     build:
       context: .
-      dockerfile: fingerprint/Dockerfile-fingerprint
+      dockerfile: fingerprint/Dockerfile
     container_name: fingerprint_serv
     volumes:
       - .:/siren/
@@ -248,13 +248,70 @@ services:
         "export TP_THREADS_PER_QUEUE=${TP_THREADS_PER_QUEUE}" \
         "export SERV_QUEUES=${SERV_QUEUES}" \
         "export SERV_THREADS_PER_QUEUE=${SERV_THREADS_PER_QUEUE}" \
-        "export SERV_ADDRESS=${SERV_ADDRESS}" \
-        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT} " \
+        "export FINGERPRINT_ADDRESS=${FINGERPRINT_ADDRESS}" \
+        "export FINGERPRINT_PORT=${FINGERPRINT_PORT}" \
+        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT}" \
         "export POSTGRES_POOL_SIZE=${POSTGRES_POOL_SIZE}" \
         "export ELASTIC_POOL_SIZE=${ELASTIC_POOL_SIZE}" \
-        "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" > /home/user/.bashrc
+        "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" \
+        "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
+        "export METADATA_PORT=${METADATA_PORT}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
+
+  metadata_serv:
+    build:
+      context: .
+      dockerfile: metadata/Dockerfile
+    container_name: metadata_serv
+    volumes:
+      - .:/siren/
+    network_mode: "host"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "export METADATA_POSTGRES_USER=${METADATA_POSTGRES_USER}" \
+        "export METADATA_POSTGRES_PASSWORD=${METADATA_POSTGRES_PASSWORD}" \
+        "export METADATA_POSTGRES_DB_NAME=${METADATA_POSTGRES_DB_NAME}" \
+        "export METADATA_POSTGRES_DB_POOL_SIZE=${METADATA_POSTGRES_DB_POOL_SIZE}" \
+        "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
+        "export METADATA_PORT=${METADATA_PORT}" \
+        "export FINGERPRINT_ADDRESS=${FINGERPRINT_ADDRESS}" \
+        "export GRPC_PROXY_PORT=${GRPC_PROXY_PORT}" \
+        "export METADATA_SECRET_KEY_BASE=${METADATA_SECRET_KEY_BASE}" > /home/user/.bashrc
+        cp /home/user/.bashrc /home/user/.profile
+        /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    environment:
+      - NGINX_PORT=${NGINX_PORT}
+      - BASIC_USER=${BASIC_USER}
+      - BASIC_PASSWORD=${BASIC_PASSWORD}
+      - METADATA_PORT=${METADATA_PORT}
+      - FINGERPRINT_PORT=${GRPC_PROXY_PORT}
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.conf
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+    depends_on:
+      - fingerprint_serv
+      - metadata_serv
+    network_mode: "host"
+    volumes:
+      - /ssl/siren:/ssl/
+      - /home/user/siren/shared_auth.conf/:/etc/nginx/shared_auth.conf
+      - /home/user/siren/nginx.conf.conf/:/etc/nginx/templates/nginx.conf.conf
+    command:
+      - /bin/sh
+      - -c
+      - |
+        rm -rf /etc/nginx/.htpasswd
+        echo -n "${BASIC_USER}:" >> /etc/nginx/.htpasswd
+        openssl passwd -6 ${BASIC_PASSWORD} >> /etc/nginx/.htpasswd
+        /docker-entrypoint.d/20-envsubst-on-templates.sh
+        nginx -g "daemon off;"
 
 volumes:
   certs:
