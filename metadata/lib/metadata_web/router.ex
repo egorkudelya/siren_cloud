@@ -13,5 +13,6 @@ defmodule MetadataWeb.Router do
     resources "/genres",   GenreController
     resources "/records",  RecordController
     resources "/singles",  SingleController
+    delete "/records/do_delete/:id", RecordController, :do_delete
   end
 end

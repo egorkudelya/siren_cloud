@@ -12,7 +12,7 @@ defmodule MetadataWeb.RecordControllerTest do
     "art_url" => "some art_url",
     "audio_url" => @audio_url,
     "bit_rate" => 42,
-    "date_recordered" => ~D[2023-05-11],
+    "date_recorded" => ~D[2023-05-11],
     "duration" => 42,
     "name" => "some name",
     "single" => nil
@@ -22,7 +22,7 @@ defmodule MetadataWeb.RecordControllerTest do
    "art_url" => "some updated art_url",
     "audio_url" => @audio_url,
     "bit_rate" => 43,
-    "date_recordered" => ~D[2023-05-12],
+    "date_recorded" => ~D[2023-05-12],
     "duration" => 43,
     "name" => "some updated name",
     "single" => nil
@@ -33,7 +33,7 @@ defmodule MetadataWeb.RecordControllerTest do
     "art_url" => nil,
     "audio_url" => nil,
     "bit_rate" => nil,
-    "date_recordered" => nil,
+    "date_recorded" => nil,
     "duration" => nil,
     "name" => nil,
     "artists" => [nil],
@@ -74,7 +74,7 @@ defmodule MetadataWeb.RecordControllerTest do
                "art_url" => "some art_url",
                "audio_url" => @audio_url,
                "bit_rate" => 42,
-               "date_recordered" => "2023-05-11",
+               "date_recorded" => "2023-05-11",
                "duration" => 42,
                "name" => "some name"
              } = json_response(conn, 200)["data"]
@@ -111,7 +111,7 @@ defmodule MetadataWeb.RecordControllerTest do
                "art_url" => "some updated art_url",
                "audio_url" => @audio_url,
                "bit_rate" => 43,
-               "date_recordered" => "2023-05-12",
+               "date_recorded" => "2023-05-12",
                "duration" => 43,
                "name" => "some updated name"
              } = json_response(conn, 200)["data"]

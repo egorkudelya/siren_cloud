@@ -127,16 +127,27 @@ defmodule Metadata.Library do
 
   alias Metadata.Library.Record
 
-  def list_records do
-    Repo.all(Record)
+  def list_records() do
+    Record
+    |> where([r], r.is_visible)
+    |> Repo.all()
     |> Repo.preload([:artists, :albums, :genres])
   end
 
   def get_record(id) do
     Record
+    |> where([r], r.is_visible)
     |> Repo.get(id)
     |> Repo.preload([:artists, :albums, :genres])
   end
+
+  def get_record_including_hidden(id) when not is_nil(id) do
+    Record
+    |> Repo.get(id)
+    |> Repo.preload([:artists, :albums, :genres])
+  end
+
+  def get_record_including_hidden(_id), do: nil
 
   defp bool_to_int(bool) do
     if bool, do: 1, else: 0
@@ -186,6 +197,11 @@ defmodule Metadata.Library do
     Map.merge(record, %{"single" => single})
   end
 
+  defp validate_albums(album_ids, is_legacy) do
+    filtered = Enum.map(album_ids, fn(id) -> Library.get_album(id) != nil or is_legacy && Library.get_single(id) != nil end)
+    length(album_ids) == Enum.count(filtered, fn(r) -> r end)
+  end
+
   def update_record(%Record{} = record, attrs) do
     record_map = record
     |> Map.from_struct()
@@ -196,14 +212,17 @@ defmodule Metadata.Library do
 
     artists = Enum.map(process_range_id(Map.get(record_map, "artists")), fn(id) -> Library.get_artist(id) end)
     genres = Enum.map(process_range_id(Map.get(record_map, "genres")), fn(id) -> Library.get_genre(id) end)
-    albums = Enum.map(process_range_id(Map.get(record_map, "albums")), fn(id) -> Library.get_album(id) end)
-    single = Library.get_single(List.first(process_range_id([Map.get(record_map, "single")])))
+    album_ids = process_range_id(Map.get(record_map, "albums"))
+    single_field = Map.get(record_map, "single")
+    single = Library.get_single(List.first(process_range_id([single_field])))
 
-    collection = Enum.filter(albums ++ [single], & !is_nil(&1))
-    case length(collection) == length(albums) + bool_to_int(!is_nil(single)) do
+    is_single_valid = if not is_nil(single_field), do: not is_nil(single), else: true
+    case validate_albums(album_ids, album_ids != Map.get(attrs, "albums")) and is_single_valid do
       true ->
+        albums = Enum.filter(Enum.map(album_ids, fn(id) -> Library.get_album(id) end), & !is_nil(&1))
+        collections = if not is_nil(single_field), do: albums ++ [single], else: albums
         record
-        |> Record.changeset(record_map, artists, collection, genres)
+        |> Record.changeset(record_map, artists, collections, genres)
         |> Repo.update()
       _ ->
         {:error, :bad_request}

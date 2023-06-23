@@ -22,7 +22,7 @@ defmodule MetadataWeb.RecordJSON do
       id: record.id,
       name: record.name,
       duration: record.duration,
-      date_recordered: record.date_recordered,
+      date_recorded: record.date_recorded,
       bit_rate: record.bit_rate,
       audio_url: record.audio_url,
       art_url: record.art_url,

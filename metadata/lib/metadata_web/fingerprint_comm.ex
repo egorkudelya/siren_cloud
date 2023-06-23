@@ -1,10 +1,7 @@
 defmodule FingerprintComm do
 
-  @fingerprint_addr Enum.join(["http://", System.get_env("FINGERPRINT_ADDRESS"), ":", System.get_env("GRPC_PROXY_PORT")], "")
-  @expected_response "{\"success\":true}"
-
-  def fingerprint_addr, do: @fingerprint_addr
-  def expected_response, do: @expected_response
+  def fingerprint_addr, do: Enum.join(["http://", System.get_env("FINGERPRINT_ADDRESS"), ":", System.get_env("GRPC_PROXY_PORT")], "")
+  def expected_response, do: "{\"success\":true}"
 
   def post_record(id, audio_url, is_caching) do
     url = Enum.join([FingerprintComm.fingerprint_addr, "/v1/loadTrack"], "")

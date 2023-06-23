@@ -6,7 +6,6 @@ namespace siren::cloud
     FindTrackByFingerprintCallData::FindTrackByFingerprintCallData(EnginePtr& engine, SirenFingerprint::AsyncService* service, const CompletionQueuePtr& completionQueue, WeakCollectorPtr collection)
         : CallData(engine, service, completionQueue, collection)
     {
-        m_metadataAddr = siren::getenv("METADATA_ADDRESS") + ':' + siren::getenv("METADATA_PORT") + "/api/records/";
         this->proceed();
     }
 
@@ -43,7 +42,7 @@ namespace siren::cloud
             return;
         }
 
-        std::string url = m_metadataAddr + std::to_string(engineRes.getSongId());
+        std::string url = m_metadataAddr + "/api/records/" + std::to_string(engineRes.getSongId());
         HttpResponse metadataRes = RequestManager::Get(url, {}, "Content-Type: application/json", {});
         if (metadataRes.status_code == 200)
         {

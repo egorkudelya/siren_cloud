@@ -161,7 +161,7 @@ defmodule Metadata.LibraryTest do
         "art_url" => nil,
         "audio_url" => nil,
         "bit_rate" => nil,
-        "date_recordered" => nil,
+        "date_recorded" => nil,
         "duration" => nil,
         "name" => nil,
         "artists" => [nil],
@@ -191,7 +191,7 @@ defmodule Metadata.LibraryTest do
         "art_url" => "some art_url",
         "audio_url" => "some audio_url",
         "bit_rate" => 42,
-        "date_recordered" => ~D[2023-05-11],
+        "date_recorded" => ~D[2023-05-11],
         "duration" => 42,
         "name" => "some name",
         "artists" => [artist.id],
@@ -204,7 +204,7 @@ defmodule Metadata.LibraryTest do
       assert record.art_url == "some art_url"
       assert record.audio_url == "some audio_url"
       assert record.bit_rate == 42
-      assert record.date_recordered == ~D[2023-05-11]
+      assert record.date_recorded == ~D[2023-05-11]
       assert record.duration == 42
       assert record.name == "some name"
     end
@@ -219,7 +219,7 @@ defmodule Metadata.LibraryTest do
         "art_url" => "some updated art_url",
         "audio_url" => "some updated audio_url",
         "bit_rate" => 43,
-        "date_recordered" => ~D[2023-05-12],
+        "date_recorded" => ~D[2023-05-12],
         "duration" => 43,
         "name" => "some updated name",
       }
@@ -227,7 +227,7 @@ defmodule Metadata.LibraryTest do
       assert record.art_url == "some updated art_url"
       assert record.audio_url == "some updated audio_url"
       assert record.bit_rate == 43
-      assert record.date_recordered == ~D[2023-05-12]
+      assert record.date_recorded == ~D[2023-05-12]
       assert record.duration == 43
       assert record.name == "some updated name"
     end

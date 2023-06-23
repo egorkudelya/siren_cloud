@@ -18,8 +18,5 @@ namespace siren::cloud
         void addNext() override;
         void waitForRequest() override;
         void handleRequest() override;
-
-    private:
-        std::string m_metadataAddr;
     };
 }

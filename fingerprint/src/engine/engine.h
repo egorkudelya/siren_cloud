@@ -33,7 +33,7 @@ namespace siren::cloud
     private:
         bool isSongIdValid(SongIdType songId);
         bool isSongIdInCache(bool& exists, SongIdType songId);
-        bool isSongIdInPrimary(bool& exists, SongIdType songId);
+        bool isSongIdInPrimary(bool& exists, SongIdType songId, bool shouldClaim=false);
         bool cacheFingerprintBySongId(SongIdType songId);
         bool loadFingerprintIntoPrimary(const FingerprintType& fingerprint, SongIdType songId);
         bool loadFingerprintIntoCache(const FingerprintType& fingerprint, SongIdType songId);

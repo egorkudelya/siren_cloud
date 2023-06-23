@@ -49,7 +49,7 @@ defmodule Metadata.LibraryFixtures do
         "art_url" => "some art_url",
         "audio_url" => "some audio_url",
         "bit_rate" => 42,
-        "date_recordered" => ~D[2023-05-11],
+        "date_recorded" => ~D[2023-05-11],
         "duration" => 42,
         "name" => "some name",
         "artists" => [artist.id],

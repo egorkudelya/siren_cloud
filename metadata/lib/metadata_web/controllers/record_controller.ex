@@ -60,23 +60,33 @@ defmodule MetadataWeb.RecordController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    FingerprintComm.delete_record(id)
+  def do_delete(conn, %{"id" => id}) do
+    Library.get_record_including_hidden(id)
     |> case do
-      true ->
-        Library.get_record(id)
-        |> case do
-          nil ->
-            {:error, :not_found}
+      nil ->
+        {:error, :not_found}
 
-          record ->
-            with {:ok, %Record{}} <- Library.delete_record(record) do
-              send_resp(conn, :no_content, "")
-            end
+    record ->
+      with {:ok, %Record{}} <- Library.delete_record(record) do
+        send_resp(conn, :no_content, "")
+      end
+    end
+  end
+
+  def delete(conn, %{"id" => id}) do
+    Library.get_record(id)
+    |> case do
+      %Record{} = record ->
+      FingerprintComm.delete_record(id)
+      |> case do
+        true ->
+            Library.update_record(record, %{"is_visible" => false})
+            send_resp(conn, :no_content, "")
+        _ ->
+            {:error, :internal_server_error}
         end
-
-      _ ->
-        {:error, :internal_server_error}
+    nil ->
+      {:error, :not_found}
     end
   end
 end
