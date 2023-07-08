@@ -109,7 +109,7 @@ namespace siren::cloud::elastic
         else
         {
             std::string batchSize = siren::getenv("ELASTIC_BATCH_SIZE");
-            optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 5000;
+            optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 1000;
         }
 
         std::vector<WaitableFuture> futures;
@@ -121,7 +121,8 @@ namespace siren::cloud::elastic
                     [this, url, auth, type, strQuery = query.get("query")] {
                         if (!doExecute(auth, url, type, strQuery))
                         {
-                            Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery asynchronously");
+                            Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery asynchronously."
+                            "Consider making individual queries more lightweight or opting for a bulk version");
                         }
                     }, true));
             }
@@ -178,7 +179,9 @@ namespace siren::cloud::elastic
                 [this, url, type, auth, strQuery = streamQuery.str()] {
                     if (!doExecute(auth, url, type, strQuery))
                     {
-                        Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery asynchronously");
+                        Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__,
+                        "doExecute failed to execute ESQuery asynchronously. Consider adjusting the value for ELASTIC_BATCH_SIZE"
+                        " and/or increasing memory limit for ES (MEM_LIMIT)");
                     }
                 }, true));
         }

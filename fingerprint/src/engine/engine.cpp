@@ -2,6 +2,7 @@
 #include "../thread_pool/async_manager.h"
 #include "../common/request_manager.h"
 #include "../logger/logger.h"
+#include <filesystem>
 
 namespace siren_core
 {
@@ -384,8 +385,14 @@ namespace siren::cloud
             return false;
         }
 
-        std::ofstream ofstream(filePath);
-        HttpResponse res = RequestManager::DownloadFile(url, ofstream);
+        std::filesystem::path path(url);
+        filePath += path.extension();
+
+        std::string strTimeout = siren::getenv("THIRDPARTY_API_TIMEOUT_MS");
+        int timeout = !strTimeout.empty() ? std::stoi(strTimeout) : 30000;
+
+        std::ofstream ofstream(filePath, std::ios::binary);
+        HttpResponse res = RequestManager::DownloadFile(url, ofstream, timeout);
 
         if (res.status_code == 0)
         {
@@ -408,6 +415,11 @@ namespace siren::cloud
             Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, err.str());
             return false;
         }
+
+        std::stringstream msg;
+        msg << "Created a fingerprint of size " << coreResult.fingerprint.get_size() << " for track with id " << songId;
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
+
         {
             AsyncManager::instance().submitTask([this, fpt = coreResult.fingerprint, songId] {
                  markAsyncStart();
@@ -506,14 +518,6 @@ namespace siren::cloud
         if (!isPrimaryOk || primaryCheck)
         {
             return false;
-        }
-
-        bool cacheCheck;
-        bool isCacheOk = isSongIdInCache(cacheCheck, songId);
-
-        if (!isCacheOk || cacheCheck)
-        {
-           return false;
         }
         return true;
     }

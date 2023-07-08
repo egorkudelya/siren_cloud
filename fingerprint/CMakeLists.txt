@@ -106,10 +106,10 @@ if(Boost_FOUND)
     target_include_directories(histogram PRIVATE ${Boost_INCLUDE_DIRS})
 endif()
 
-target_link_libraries(common PUBLIC siren_core)
+target_link_libraries(common PUBLIC siren_core nlohmann_json::nlohmann_json)
 target_link_libraries(logger PRIVATE spdlog::spdlog)
 target_link_libraries(thread_pool PUBLIC logger common)
-target_link_libraries(db_abstraction_layer PUBLIC logger request_manager thread_pool nlohmann_json::nlohmann_json cpr::cpr ${PQXX_LIB} ${PQ_LIB})
+target_link_libraries(db_abstraction_layer PUBLIC logger request_manager thread_pool cpr::cpr ${PQXX_LIB} ${PQ_LIB})
 
 target_include_directories(db_abstraction_layer PRIVATE ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(db_abstraction_layer PRIVATE ${CMAKE_BINARY_DIR})

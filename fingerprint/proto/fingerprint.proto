@@ -10,22 +10,52 @@ message FindTrackByFingerprintRequest {
   map<uint64, uint64> fingerprint = 1;
 }
 
-message FindTrackByFingerprintResponse {
-  string data = 1;
-}
-
 message LoadTrackByUrlRequest {
   string url = 1;
   uint64 song_id = 2;
   bool is_caching = 3;
 }
 
-message BasicIsSuccessResponse {
-  bool success = 1;
-}
-
 message DeleteTrackByIdRequest {
   uint64 song_id = 1;
+}
+
+message Error {
+  string message = 1;
+}
+
+message AlbumResponse {
+  string art_url = 1;
+  string name = 2;
+  bool is_single = 3;
+}
+
+message ArtistResponse {
+  string name = 1;
+}
+
+message GenreResponse {
+  string name = 1;
+}
+
+message FindTrackByFingerprintResponse {
+  string name = 1;
+  int64 duration = 2;
+  string date_recorded = 3;
+  int32 bit_rate = 4;
+  string art_url = 5;
+  string audio_url = 6;
+  int64 timestamp = 7;
+  repeated AlbumResponse albums = 8;
+  repeated GenreResponse genres = 9;
+  repeated ArtistResponse artists = 10;
+  AlbumResponse single = 11;
+
+  repeated Error errors = 12;
+}
+
+message BasicIsSuccessResponse {
+  bool success = 1;
 }
 
 service SirenFingerprint {

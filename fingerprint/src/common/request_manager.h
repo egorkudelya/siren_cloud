@@ -24,7 +24,7 @@ namespace siren::cloud
         static HttpResponse Post(const std::string& url, const std::string& body, const std::string& contentType, const Auth& auth, bool isVerifying=false);
         static HttpResponse Put(const std::string& url, const std::string& body, const std::string& contentType, const Auth& auth, bool isVerifying=false);
         static HttpResponse Delete(const std::string& url, const std::string& body, const std::string& contentType, const Auth& auth, bool isVerifying=false);
-        static HttpResponse DownloadFile(const std::string& url, std::ofstream& stream);
+        static HttpResponse DownloadFile(const std::string& url, std::ofstream& stream, int timeout);
 
     private:
         RequestManager() = default;

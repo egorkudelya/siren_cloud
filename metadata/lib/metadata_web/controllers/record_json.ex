@@ -29,7 +29,7 @@ defmodule MetadataWeb.RecordJSON do
       artists: record.artists,
       genres: record.genres,
       albums: compose_collection(record.albums, false),
-      single: compose_collection(record.albums, true)
+      single: List.first(compose_collection(record.albums, true))
     }
   end
 end

@@ -27,6 +27,10 @@ COPY . /home/user/siren
 RUN rm -rf /home/user/siren/fingerprint
 WORKDIR /home/user/siren/metadata
 
+#RUN export MIX_ENV=prod
+RUN mix local.hex --force && mix local.rebar --force
+RUN mix do deps.get, deps.compile, compile
+
 RUN ( \
     echo 'LogLevel DEBUG2'; \
     echo 'PermitRootLogin yes'; \
@@ -42,9 +46,3 @@ RUN useradd -m user \
 RUN usermod -s /bin/bash user
 RUN chown -R user:user /home/user/
 RUN chmod 755 /home/user/
-
-#RUN export MIX_ENV=prod
-RUN mix local.hex --force
-RUN mix deps.get
-RUN mix local.rebar --force
-RUN mix compile

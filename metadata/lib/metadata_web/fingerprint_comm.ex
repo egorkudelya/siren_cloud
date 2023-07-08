@@ -11,7 +11,7 @@ defmodule FingerprintComm do
                             is_caching: is_caching
                             })
     headers = [{"Content-type", "application/json"}]
-    HTTPoison.post(url, body, headers, recv_timeout: :timer.seconds(180))
+    HTTPoison.post(url, body, headers, timeout: 180_000, recv_timeout: 180_000)
     |> case do
       {:ok, res} ->
         Map.get(res, :body) == FingerprintComm.expected_response
@@ -26,7 +26,7 @@ defmodule FingerprintComm do
                             song_id: id
                             })
     headers = [{"Content-type", "application/json"}]
-    HTTPoison.post(url, body, headers, recv_timeout: :timer.seconds(180))
+    HTTPoison.post(url, body, headers, timeout: 180_000, recv_timeout: 180_000)
     |> case do
       {:ok, res} ->
         Map.get(res, :body) == FingerprintComm.expected_response

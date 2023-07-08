@@ -242,8 +242,10 @@ services:
         "export REPLICA_COUNT=${REPLICA_COUNT}" \
         "export ELASTIC_BATCH_SIZE=${ELASTIC_BATCH_SIZE}" \
         "export ELASTIC_HOST=${ELASTIC_HOST}" \
-        "export PEAK_THRESHOLD=${PEAK_THRESHOLD}" \
-        "export NET_SIZE=${NET_SIZE}" \
+        "export CORE_PEAK_ZSCORE=${CORE_PEAK_ZSCORE}" \
+        "export CORE_BLOCK_SIZE=${CORE_BLOCK_SIZE}" \
+        "export CORE_BLOCK_STRIDE_COEFF=${CORE_BLOCK_STRIDE_COEFF}" \
+        "export MIN_WASSERSTEIN_DISTANCE=${MIN_WASSERSTEIN_DISTANCE}" \
         "export THREAD_POOL_QUEUES=${THREAD_POOL_QUEUES}" \
         "export TP_THREADS_PER_QUEUE=${TP_THREADS_PER_QUEUE}" \
         "export SERV_QUEUES=${SERV_QUEUES}" \
