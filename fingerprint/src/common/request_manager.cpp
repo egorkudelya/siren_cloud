@@ -31,9 +31,10 @@ namespace siren::cloud
                            cpr::Header{{"Content-Type", contentType}});
     }
 
-    HttpResponse RequestManager::DownloadFile(const std::string& url, std::ofstream& ofstream)
+    HttpResponse RequestManager::DownloadFile(const std::string& url, std::ofstream& ofstream, int timeout)
     {
-       cpr::Session session{};
+       cpr::Session session;
+       session.SetConnectTimeout(timeout);
        session.SetUrl(cpr::Url{url});
        return session.Download(ofstream);
     }

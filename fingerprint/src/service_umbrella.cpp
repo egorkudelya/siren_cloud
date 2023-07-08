@@ -7,9 +7,13 @@ namespace siren::cloud
 
     std::unique_ptr<ServerImpl> CreateServer()
     {
-        std::string servAddress = siren::getenv("SERV_ADDRESS");
-        release_assert(!servAddress.empty(), "Server address is not provided. Make sure to set SERV_ADDRESS");
+        std::string servAddress = siren::getenv("FINGERPRINT_ADDRESS");
+        std::string servPort = siren::getenv("FINGERPRINT_PORT");
 
+        release_assert(!servAddress.empty(), "Server address is not provided. Make sure to set FINGERPRINT_ADDRESS");
+        release_assert(!servPort.empty(), "Server port is not provided. Make sure to set FINGERPRINT_PORT");
+
+        servAddress = servAddress + ":" + servPort;
         std::string postgresPoolSizeStr = siren::getenv("POSTGRES_POOL_SIZE");
         std::string elasticPoolSizeStr = siren::getenv("ELASTIC_POOL_SIZE");
 

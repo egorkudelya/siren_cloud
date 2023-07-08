@@ -2,6 +2,7 @@
 #include "../thread_pool/async_manager.h"
 #include "../common/request_manager.h"
 #include "../logger/logger.h"
+#include <filesystem>
 
 namespace siren_core
 {
@@ -249,17 +250,26 @@ namespace siren::cloud
         return HistReturnType{HistStatus::Uncertain};
     }
 
-    bool Engine::isSongIdInPrimary(bool& exists, SongIdType songId)
+    bool Engine::isSongIdInPrimary(bool& exists, SongIdType songId, bool shouldClaim)
     {
         Query query;
         std::stringstream sql;
-        sql << "SELECT EXISTS (SELECT 1 from fingerprint WHERE song_id = " << songId << ')' << "AS \"exists\"";
+        if (shouldClaim)
+        {
+            sql << "SELECT \"find_song_id\"(" << songId << ")";
+        }
+        else
+        {
+            sql << "SELECT EXISTS (SELECT 1 from fingerprint WHERE song_id = " << songId << ')'
+                << "AS \"find_song_id\";";
+        }
+
         query.emplace("query", sql.str());
 
         auto connection = m_primaryPool->getConnection();
         auto command = connection->createCommand(std::move(query));
 
-        if (!command->execute() || !command->asBool("exists", exists))
+        if (!command->execute() || !command->asBool("find_song_id", exists))
         {
             Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Failed to check whether song is in primary storage");
             m_primaryPool->releaseConnection(std::move(connection));
@@ -296,19 +306,6 @@ namespace siren::cloud
 
     bool Engine::loadFingerprintIntoPrimary(const FingerprintType& fingerprint, SongIdType songId)
     {
-        bool exists;
-        bool isOk = isSongIdInPrimary(exists, songId);
-
-        if (!isOk)
-        {
-            return false;
-        }
-        if (exists)
-        {
-            Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Tried to load a song already in primary storage");
-            return false;
-        }
-
         std::stringstream stream;
         QueryCollection queryCollection;
         for (auto it = fingerprint.cbegin(); it != fingerprint.cend(); it++)
@@ -324,10 +321,22 @@ namespace siren::cloud
             stream.clear();
             stream.str({});
         }
-        auto connection = m_primaryPool->getConnection();
-        auto command = connection->createCommand(std::move(queryCollection));
 
-        bool isSuccess = command->execute();
+        bool isSuccess;
+        auto connection = m_primaryPool->getConnection();
+        {
+            auto command = connection->createCommand(std::move(queryCollection));
+            isSuccess = command->execute();
+        }
+
+        // cleaning up in case there is a claiming row for this song_id
+        Query cleanUpQuery;
+        stream << "DELETE FROM fingerprint WHERE hash=-1 AND timestamp=-1 AND song_id=" << songId;
+        cleanUpQuery.emplace("query", stream.str());
+
+        auto command = connection->createCommand(std::move(cleanUpQuery));
+        command->execute();
+
         m_primaryPool->releaseConnection(std::move(connection));
         return isSuccess;
     }
@@ -376,8 +385,14 @@ namespace siren::cloud
             return false;
         }
 
-        std::ofstream ofstream(filePath);
-        HttpResponse res = RequestManager::DownloadFile(url, ofstream);
+        std::filesystem::path path(url);
+        filePath += path.extension();
+
+        std::string strTimeout = siren::getenv("THIRDPARTY_API_TIMEOUT_MS");
+        int timeout = !strTimeout.empty() ? std::stoi(strTimeout) : 30000;
+
+        std::ofstream ofstream(filePath, std::ios::binary);
+        HttpResponse res = RequestManager::DownloadFile(url, ofstream, timeout);
 
         if (res.status_code == 0)
         {
@@ -396,10 +411,15 @@ namespace siren::cloud
         if (coreResult.code != siren::CoreStatus::OK)
         {
             std::stringstream err;
-            err << "Could not fingerprint a track, status: " << (int)coreResult.code;
+            err << "Could not fingerprint the track, status: " << (int)coreResult.code;
             Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, err.str());
             return false;
         }
+
+        std::stringstream msg;
+        msg << "Created a fingerprint of size " << coreResult.fingerprint.get_size() << " for track with id " << songId;
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
+
         {
             AsyncManager::instance().submitTask([this, fpt = coreResult.fingerprint, songId] {
                  markAsyncStart();
@@ -492,16 +512,8 @@ namespace siren::cloud
 
     bool Engine::isSongIdValid(SongIdType songId)
     {
-        bool cacheCheck;
-        bool isCacheOk = isSongIdInCache(cacheCheck, songId);
-
-        if (!isCacheOk || cacheCheck)
-        {
-           return false;
-        }
-
         bool primaryCheck;
-        bool isPrimaryOk = isSongIdInPrimary(primaryCheck, songId);
+        bool isPrimaryOk = isSongIdInPrimary(primaryCheck, songId, true);
 
         if (!isPrimaryOk || primaryCheck)
         {

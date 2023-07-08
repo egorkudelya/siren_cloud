@@ -127,7 +127,8 @@ namespace siren::cloud
                 }
                 else
                 {
-                    Logger::log(LogLevel::WARNING, __FILE__, __FUNCTION__, __LINE__, "CompletionQueue is fully drained or shutting down");
+                    Logger::log(LogLevel::WARNING, __FILE__, __FUNCTION__, __LINE__,
+                    "CompletionQueue is shutting down or client has disconnected without waiting for a response");
                 }
             }
         }

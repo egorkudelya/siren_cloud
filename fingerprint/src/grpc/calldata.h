@@ -58,6 +58,7 @@ namespace siren::cloud
             , m_engine(engine)
             , m_collector(collection)
         {
+            m_metadataAddr = siren::getenv("METADATA_ADDRESS") + ':' + siren::getenv("METADATA_PORT");
         }
 
         virtual ~CallData() = default;
@@ -121,6 +122,7 @@ namespace siren::cloud
         ServerAsyncResponseWriter<ReplyType> m_responder;
         ServerContext m_serverContext;
         EnginePtr m_engine;
+        std::string m_metadataAddr;
     };
 
 } // namespace siren::service

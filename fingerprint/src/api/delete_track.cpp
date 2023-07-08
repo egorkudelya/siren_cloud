@@ -1,4 +1,6 @@
 #include "delete_track.h"
+#include "../thread_pool/async_manager.h"
+#include "../common/request_manager.h"
 
 namespace siren::cloud
 {
@@ -30,8 +32,32 @@ namespace siren::cloud
         auto& req = getRequest();
         auto& reply = getReply();
 
+        std::stringstream msg;
+        msg << "Deleting fingerprint of song with id " << req.song_id();
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
+
         SongIdType songId = req.song_id();
-        bool isSuccess = m_engine->purgeFingerprintBySongId(songId);
-        reply.set_success(isSuccess);
+        AsyncManager::instance().submitTask([this, songId] {
+            if (!m_engine->purgeFingerprintBySongId(songId))
+            {
+                std::stringstream err;
+                err << "Failed to delete fingerprint by song id " << songId;
+                Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, err.str());
+                return;
+            }
+
+            std::string url = m_metadataAddr + "/api/records/do_delete/" + std::to_string(songId);
+            HttpResponse metadataRes = RequestManager::Delete(url, {}, "Content-Type: application/json", {});
+
+            if (metadataRes.status_code != 204)
+            {
+                std::stringstream err;
+                err << "Failed to delete song metadata for song with id " << songId << ", Metadata returned code "
+                    << metadataRes.status_code << " with error " << metadataRes.error.message;
+                Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__, err.str());
+            }
+        });
+
+        reply.set_success(true);
     }
 }

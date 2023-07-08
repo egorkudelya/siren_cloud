@@ -10,7 +10,7 @@ namespace siren::cloud
     }
     HistReturnType::HistReturnType(HistStatus status, SongIdType id, TimestampType ts, float ws)
         : m_status(status)
-        , m_song_id(id)
+        , m_songId(id)
         , m_timestamp(ts)
         , m_wassersteinDistance(ws)
     {
@@ -28,7 +28,7 @@ namespace siren::cloud
 
     SongIdType HistReturnType::getSongId() const
     {
-        return m_song_id;
+        return m_songId;
     }
 
     TimestampType HistReturnType::getTimestamp() const
@@ -43,15 +43,10 @@ namespace siren::cloud
 
     Histogram::Histogram(const DBCommandPtr& dbReturnPtr, const FingerprintType& fingerprint)
     {
-        std::string peakPercent = siren::getenv("MINIMUM_PEAK_PERCENT");
-        std::string minWassDistance = siren::getenv("MINIMUM_WASSERSTEIN_DISTANCE");
-        std::string minZscore = siren::getenv("MINIMUM_ZSCORE");
+        std::string minWassDistance = siren::getenv("MIN_WASSERSTEIN_DISTANCE");
+        m_minWassersteinDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 45;
 
-        m_peakPct = !peakPercent.empty() ? std::stoi(peakPercent)/100 : 0.33f;
-        m_minWassDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 250;
-        m_minZscore = !minZscore.empty() ? std::stof(minZscore) : 3.25;
-
-        std::unordered_multimap<HashType, std::pair<TimestampType, SongIdType>> dist;
+        std::unordered_multimap<HashType, std::pair<SongIdType, TimestampType>> dist;
         while (dbReturnPtr->fetchNext())
         {
             HashType hash;
@@ -66,27 +61,22 @@ namespace siren::cloud
                 Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Could not extract necessary data from DBCommandPtr");
                 continue;
             }
-            dist.emplace(hash, std::make_pair(timestamp, songId));
+            dist.emplace(hash, std::make_pair(songId, timestamp));
         }
 
-        for (auto fptIt = fingerprint.cbegin(); fptIt != fingerprint.cend(); fptIt++)
+        for (auto incomingIt = fingerprint.cbegin(); incomingIt != fingerprint.cend(); incomingIt++)
         {
-            auto tsIdRange = dist.equal_range(fptIt->first);
+            HashType incomingHash = incomingIt->first;
+            TimestampType incomingTs = incomingIt->second;
+
+            auto tsIdRange = dist.equal_range(incomingHash);
             for (auto dbIt = tsIdRange.first; dbIt != tsIdRange.second; dbIt++)
             {
-                SongIdType dbSongId = dbIt->second.second;
-                TimestampType originalTs = dbIt->second.first;
-                TimestampType incomingTs = fptIt->second;
+                SongIdType dbSongId = dbIt->second.first;
+                TimestampType originalTs = dbIt->second.second;
                 DeltaType delta = originalTs - incomingTs;
 
-                m_ids.insert(dbSongId);
-                auto histogramIt = m_histogram.insert(HistogramEntry{dbSongId, delta, originalTs}).first;
-
-                m_histogram.modify(histogramIt, (&boost::lambda::_1)->*& HistogramEntry::counter += 1);
-                if (histogramIt->timestamp < originalTs)
-                {
-                    m_histogram.modify(histogramIt, (&boost::lambda::_1)->*& HistogramEntry::timestamp = originalTs);
-                }
+                m_histogram.insert(HistogramEntry{dbSongId, delta, originalTs});
             }
         }
     }
@@ -111,122 +101,61 @@ namespace siren::cloud
         return m_histogram.cend();
     }
 
+    Histogram::DeltaCounterForIds Histogram::groupDeltasByCount() const
+    {
+        const auto& deltaIdIndex = m_histogram.get<tags::IdDeltaTsComposite>();
+
+        DeltaCounterForIds countedDeltas;
+        for (auto first = deltaIdIndex.begin(), last = deltaIdIndex.end(); first != last;)
+        {
+            auto next = deltaIdIndex.upper_bound(std::make_tuple(first->songId, first->delta));
+            auto dist = std::distance(first, next);
+
+            countedDeltas.emplace(dist, std::make_pair(first->songId, first->delta));
+            first = next;
+        }
+        return countedDeltas;
+    }
+
     HistReturnType Histogram::findDominantPeak()
     {
-        auto flattenCounterMap = [](const auto& map, auto& vec)
+        auto counterPerSongId = groupDeltasByCount();
+        auto maxIt = counterPerSongId.begin();
+
+        std::vector<float> peak{(float)maxIt->first};
+        std::vector<float> noise;
+
+        auto it = counterPerSongId.begin();
+        while (noise.size() <= 10 || it != counterPerSongId.end())
         {
-            for (auto [counter, _]: map)
+            if (it->second != maxIt->second)
             {
-                vec.push_back(counter);
+                noise.push_back(it->first);
             }
-        };
-
-        auto composeOutlierMaps = [this](auto&& scores, float threshold)
-        {
-            std::multimap<CounterType, SongIdType, std::greater<CounterType>> peaksMap, noiseMap;
-            for (const auto& [zscore, counter]: scores)
-            {
-                auto it = m_histogram.get<tags::Counter>().find(counter);
-                if (scores.size() == 1 || zscore >= threshold)
-                {
-                    peaksMap.emplace(counter, it->song_id);
-                }
-                else
-                {
-                    noiseMap.emplace(counter, it->song_id);
-                }
-            }
-            return std::make_pair(peaksMap, noiseMap);
-        };
-
-        auto getOutliersOfFlatIndex = [&](const std::vector<float>& flatIndex, float threshold)
-        {
-            auto scores = getMZScoreOfPoints(flatIndex);
-            return composeOutlierMaps(std::move(scores), threshold);
-        };
-
-        auto getOutliersOfIndex = [&](const auto& index, const auto& dim, float threshold)
-        {
-            auto scores = getMZScoreOfPoints(index, dim);
-            return composeOutlierMaps(std::move(scores), threshold);
-        };
-
-        auto& deltaCounterIdx = m_histogram.get<tags::Counter>();
-
-        size_t prevPeaksCount = 0;
-        while (!deltaCounterIdx.empty())
-        {
-            auto [peaksMap, noiseMap] = getOutliersOfIndex(deltaCounterIdx, &HistogramEntry::counter, m_minZscore);
-            if (peaksMap.empty())
-            {
-                return HistReturnType{HistStatus::Uncertain};
-            }
-
-            std::vector<float> peaks, noise;
-
-            flattenCounterMap(peaksMap, peaks);
-            flattenCounterMap(noiseMap, noise);
-
-            if (noise.empty())
-            {
-                noise.push_back(0.0f);
-            }
-
-            std::vector<float> peakWeights(peaks.size(), 1);
-            std::vector<float> noiseWeights(noise.size(), 1);
-
-            float wassDistance = wasserstein(peaks, peakWeights, noise, noiseWeights);
-            if (wassDistance > m_minWassDistance)
-            {
-                auto it = peaksMap.begin();
-                size_t idCount = std::count_if(peaksMap.begin(), peaksMap.end(), [&it](auto&& entry) {
-                    return entry.second == it->second;
-                });
-
-                std::set<SongIdType> uniqueIdDist;
-                for (const auto& [counter, songId]: peaksMap)
-                {
-                    uniqueIdDist.insert(songId);
-                }
-
-                // check if dominant peak is significantly larger than peers
-                auto [subPeaksMap, _] = getOutliersOfFlatIndex(peaks, 3);
-                if (peaksMap.size() == 1 || subPeaksMap.size() == 1 || uniqueIdDist.size() * m_peakPct <= idCount)
-                {
-                    auto entry = deltaCounterIdx.find(it->first);
-                    TimestampType ts{0};
-                    if (entry != deltaCounterIdx.end())
-                    {
-                        ts = entry->timestamp;
-                    }
-                    std::stringstream stream;
-                    stream << " Found a song with song id: " << it->second <<
-                              " peak: " << it->first <<
-                              " w. distance: " << wassDistance <<
-                              " last ts: " << ts << std::endl;
-                    Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, stream.str());
-                    return HistReturnType{HistStatus::OK, it->second, ts, wassDistance};
-                }
-            }
-
-            if (noiseMap.empty() || prevPeaksCount == peaks.size())
-            {
-                Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "Could not infer song id");
-                return HistReturnType{HistStatus::Uncertain};
-            }
-            prevPeaksCount = peaks.size();
-
-            // purge noise from index
-            for (auto [counter, _]: noiseMap)
-            {
-                auto it = deltaCounterIdx.find(counter);
-                if (it != deltaCounterIdx.end())
-                {
-                    deltaCounterIdx.erase(it);
-                }
-            }
+            it++;
         }
-        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "deltaCounterIdx is empty; could not infer song id");
+
+        if (noise.empty())
+        {
+            noise.push_back(1.0f);
+        }
+
+        std::vector<float> peakWeights(peak.size(), 1);
+        std::vector<float> noiseWeights(noise.size(), 1);
+
+        float wDistance = wasserstein(peak, peakWeights, noise, noiseWeights);
+        if (m_minWassersteinDistance < wDistance)
+        {
+            SongIdType matchId = maxIt->second.first;
+            DeltaType matchDelta = maxIt->second.second;
+
+            auto lastMatch = m_histogram.get<tags::IdDeltaTsComposite>().find(std::make_tuple(matchId, matchDelta));
+            return HistReturnType{HistStatus::OK, matchId, lastMatch->timestamp, wDistance};
+        }
+
+        std::stringstream err;
+        err << "Could not infer song id, wasserstein distance: " << wDistance;
+        Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, err.str());
         return HistReturnType{HistStatus::Uncertain};
     }
 

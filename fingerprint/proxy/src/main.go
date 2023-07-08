@@ -14,10 +14,13 @@ import (
 )
 
 func main() {
-    servAddr := os.Getenv("SERV_ADDRESS")
-    if servAddr == "" {
-    	log.Fatal("SERV_ADDRESS is not defined")
+    servAddr := os.Getenv("FINGERPRINT_ADDRESS")
+    servPort := os.Getenv("FINGERPRINT_PORT")
+
+    if servAddr == "" || servPort == "" {
+    	log.Fatal("FINGERPRINT_ADDRESS and FINGERPRINT_PORT must be set")
     }
+    servAddr = servAddr + ":" + servPort
 
     proxyPort := os.Getenv("GRPC_PROXY_PORT")
     if proxyPort == "" {
