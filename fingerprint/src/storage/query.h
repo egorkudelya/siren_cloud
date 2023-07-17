@@ -12,6 +12,7 @@ public:
 
     bool operator==(const Query& other) const;
     void emplace(const std::string& key, const std::string& value);
+    void emplace(const std::string& key, std::string&& value);
     std::string get(const std::string& key) const;
     bool keyCompare(const Query& other) const;
     size_t getSize() const;
@@ -38,6 +39,7 @@ public:
 
     bool empty() const;
     size_t size() const;
+    void reserve(size_t size);
     bool insertQuery(const Query& queryBody);
     bool insertQuery(Query&& queryBody);
 

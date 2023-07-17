@@ -73,7 +73,7 @@ services:
     ports:
       - ${ES_PORT}:9200
     environment:
-      - "ES_JAVA_OPTS=-Xms6g -Xmx6g"
+      - ES_JAVA_OPTS=-Xms${ES_JAVA_HEAP_GB}g -Xmx${ES_JAVA_HEAP_GB}g
       - node.name=es01
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=es01,es02,es03
@@ -114,7 +114,7 @@ services:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata02:/usr/share/elasticsearch/data
     environment:
-      - "ES_JAVA_OPTS=-Xms6g -Xmx6g"
+      - ES_JAVA_OPTS=-Xms${ES_JAVA_HEAP_GB}g -Xmx${ES_JAVA_HEAP_GB}g
       - node.name=es02
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=es01,es02,es03
@@ -154,7 +154,7 @@ services:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata03:/usr/share/elasticsearch/data
     environment:
-      - "ES_JAVA_OPTS=-Xms6g -Xmx6g"
+      - ES_JAVA_OPTS=-Xms${ES_JAVA_HEAP_GB}g -Xmx${ES_JAVA_HEAP_GB}g
       - node.name=es03
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=es01,es02,es03
@@ -225,6 +225,11 @@ services:
     volumes:
       - .:/siren/
     network_mode: "host"
+#    for profiling
+#    security_opt:
+#      - seccomp:unconfined
+#    cap_add:
+#      - SYS_ADMIN
     depends_on:
       - kibana
     command:
@@ -239,6 +244,7 @@ services:
         "export POSTGRES_DB_NAME=${POSTGRES_DB_NAME}" \
         "export SHARD_COUNT=${SHARD_COUNT}" \
         "export ES_PORT=${ES_PORT}" \
+        "export ES_RESULT_WINDOW=${ES_RESULT_WINDOW}" \
         "export REPLICA_COUNT=${REPLICA_COUNT}" \
         "export ELASTIC_BATCH_SIZE=${ELASTIC_BATCH_SIZE}" \
         "export ELASTIC_HOST=${ELASTIC_HOST}" \
@@ -257,6 +263,8 @@ services:
         "export ELASTIC_POOL_SIZE=${ELASTIC_POOL_SIZE}" \
         "export ELASTIC_PASSWORD=${ELASTIC_PASSWORD}" \
         "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
+        "export SIREN_HOST=${SIREN_HOST}" \
+        "export SIREN_PORT=${SIREN_PORT}" \
         "export METADATA_PORT=${METADATA_PORT}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren
@@ -290,7 +298,6 @@ services:
     container_name: nginx
     restart: unless-stopped
     environment:
-      - NGINX_PORT=${NGINX_PORT}
       - BASIC_USER=${BASIC_USER}
       - BASIC_PASSWORD=${BASIC_PASSWORD}
       - METADATA_PORT=${METADATA_PORT}
@@ -305,6 +312,7 @@ services:
       - /ssl/siren:/ssl/
       - /home/user/siren/shared_auth.conf/:/etc/nginx/shared_auth.conf
       - /home/user/siren/nginx.conf.conf/:/etc/nginx/templates/nginx.conf.conf
+      - /home/user/siren/SirenMetadata/:/srv/seeder/data/SirenMetadata
     command:
       - /bin/sh
       - -c

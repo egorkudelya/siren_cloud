@@ -4,6 +4,11 @@ project(siren_fingerprint CXX)
 set(CMAKE_CXX_STANDARD 17)
 option(BUILD_CLOUD_TESTS "Build Siren Cloud with tests" TRUE)
 
+if (SIREN_PROFILING)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+endif ()
+
 add_subdirectory("/usr/local/include/siren_core" ${CMAKE_CURRENT_BINARY_DIR}/siren_core)
 set(PostgreSQL_ROOT "/var/lib/postgresql")
 
@@ -135,6 +140,7 @@ if (BUILD_CLOUD_TESTS)
         test/elastic.cpp
         test/connection_pool.cpp
         test/safe_queue.cpp
+        test/siren.cpp
         )
     set(test_libs TEST_DEPS gtest gtest_main db_abstraction_layer)
     set(i 0)

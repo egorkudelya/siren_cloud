@@ -55,10 +55,7 @@ namespace siren::cloud::elastic
 
     std::string ElasticCommand::formBulkQuery(Query&& queryBody, const std::string& header)
     {
-        std::string query = queryBody.get("query");
-        std::stringstream buffer;
-        buffer << header << "\n" << query << "\n";
-        return buffer.str();
+        return {header + "\n" + queryBody.get("query") + "\n"};
     }
 
     bool ElasticCommand::execute()
@@ -78,11 +75,11 @@ namespace siren::cloud::elastic
             return str.find(suffix) != std::string::npos;
         };
 
-        std::string connectionString = m_connection->getConnectionStr();
-        std::string luceneQuery = queries.begin()->get("lucene");
+        const std::string& connectionString = m_connection->getConnectionStr();
+        const std::string& luceneQuery = queries.cbegin()->get("lucene");
+        const std::string& type = queries.cbegin()->get("request_type");
+        const std::string& header = queries.cbegin()->get("header");
         std::string url = connectionString + luceneQuery;
-        std::string type = queries.begin()->get("request_type");
-        std::string header = queries.begin()->get("header");
         size_t optimalBatchSize;
 
         if (luceneQuery.empty() || type.empty())
@@ -93,9 +90,7 @@ namespace siren::cloud::elastic
 
         if (queries.size() == 1)
         {
-            Query queryBody = *queries.begin();
-            std::string query = queryBody.get("query");
-            return doExecute(auth, url, type, query);
+            return doExecute(auth, url, type, queries.begin()->get("query"));
         }
 
         bool isBulk = contains(url, "_bulk") && !header.empty();
@@ -113,12 +108,13 @@ namespace siren::cloud::elastic
         }
 
         std::vector<WaitableFuture> futures;
+        futures.reserve(queries.size());
         if (!isBulk && !isMultiSearch)
         {
             for (auto&& query: queries)
             {
                 futures.emplace_back(AsyncManager::instance().submitTask(
-                    [this, url, auth, type, strQuery = query.get("query")] {
+                    [this, url, auth, type, strQuery = std::move(query.get("query"))] {
                         if (!doExecute(auth, url, type, strQuery))
                         {
                             Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery asynchronously."
@@ -176,7 +172,7 @@ namespace siren::cloud::elastic
                 streamQuery << currentQuery;
             }
             futures.emplace_back(AsyncManager::instance().submitTask(
-                [this, url, type, auth, strQuery = streamQuery.str()] {
+                [this, url, type, auth, strQuery = std::move(streamQuery.str())] {
                     if (!doExecute(auth, url, type, strQuery))
                     {
                         Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__,
@@ -224,7 +220,7 @@ namespace siren::cloud::elastic
         Json esResponse;
         try
         {
-            esResponse = Json::parse(res.text);
+            esResponse = Json::parse(std::move(res.text));
         }
         catch (const Json::parse_error& error)
         {
@@ -232,6 +228,12 @@ namespace siren::cloud::elastic
             err << "Failed to parse ES response: " << error.what();
             Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, err.str());
             return false;
+        }
+        if (esResponse.contains("took"))
+        {
+            std::stringstream msg;
+            msg << "ES query took " << esResponse["took"] << " ms";
+            Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
         }
         if (esResponse.contains("error") || (esResponse.contains("errors") && esResponse["errors"].get<bool>()))
         {
@@ -248,11 +250,14 @@ namespace siren::cloud::elastic
             resArray = esResponse["hits"]["hits"];
         }
 
-        for (auto&& queryRes: esResponse["responses"])
+        else if (esResponse.contains("responses"))
         {
-            for (auto&& hit: queryRes["hits"]["hits"])
+            for (auto&& queryRes: esResponse["responses"])
             {
-                resArray.emplace_back(std::move(hit));
+                for (auto&& hit: queryRes["hits"]["hits"])
+                {
+                    resArray.emplace_back(std::move(hit));
+                }
             }
         }
 
