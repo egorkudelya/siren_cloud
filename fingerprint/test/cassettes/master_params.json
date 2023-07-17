@@ -1,0 +1,12 @@
+{
+  "samples_length_in_sec": 10,
+  "target_sampling_rate": 11025,
+  "target_channel_count": 1,
+  "target_window_size": 1024,
+  "target_zscore": 2.45,
+  "target_band_count": 15,
+  "stride_coeff": 0.2,
+  "min_peak_count": 350,
+  "target_block_size": 455,
+  "target_window_function": "WindowFunction::Hanning"
+}

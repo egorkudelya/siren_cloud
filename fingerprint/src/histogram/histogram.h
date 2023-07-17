@@ -24,7 +24,7 @@ namespace siren::cloud
         struct Id {};
         struct Delta {};
         struct Timestamp {};
-        struct IdDeltaTsComposite {};
+        struct IdDeltaComposite {};
     }
 
     enum class HistStatus
@@ -55,6 +55,7 @@ namespace siren::cloud
     class Histogram
     {
         using DeltaCounterForIds = std::multimap<CounterType, std::pair<SongIdType, DeltaType>, std::greater<>>;
+        using HashHistogram = std::unordered_multimap<HashType, std::pair<SongIdType, TimestampType>>;
         using HistogramContainer = boost::multi_index::multi_index_container<
             HistogramEntry,
             boost::multi_index::indexed_by<
@@ -64,18 +65,16 @@ namespace siren::cloud
                     >,
                 boost::multi_index::ordered_non_unique<
                     boost::multi_index::tag<tags::Timestamp>,
-                    boost::multi_index::key<&HistogramEntry::timestamp>
+                    boost::multi_index::key<&HistogramEntry::timestamp>,
+                    std::greater<>
                     >,
                 boost::multi_index::hashed_non_unique<
                     boost::multi_index::tag<tags::Delta>,
                     boost::multi_index::key<&HistogramEntry::delta>
                     >,
                 boost::multi_index::ordered_non_unique<
-                    boost::multi_index::tag<tags::IdDeltaTsComposite>,
-                    boost::multi_index::key<&HistogramEntry::songId, &HistogramEntry::delta, &HistogramEntry::timestamp>,
-                    boost::multi_index::composite_key_compare<
-                        std::less<>, std::less<>, std::greater<>
-                        >
+                    boost::multi_index::tag<tags::IdDeltaComposite>,
+                    boost::multi_index::key<&HistogramEntry::songId, &HistogramEntry::delta>
                     >
                 >
             >;

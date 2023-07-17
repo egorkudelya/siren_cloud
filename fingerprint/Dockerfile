@@ -116,6 +116,9 @@ RUN curl -fsSL "${GO_DOWNLOAD_URL}" -o golang.tar.gz \
 	&& cd /usr/local/go/src && ./make.bash 2>&1 \
 	&& apt-get purge -y golang-go && apt-get autoremove -y
 
+# perf
+RUN export KERNEL_RELEASE=$(uname -r) && apt-get -y install linux-tools-${KERNEL_RELEASE};
+
 COPY . /home/user/siren
 RUN rm -rf /home/user/siren/fingerprint/cmake-build-debug && \
     rm -rf /home/user/siren/fingerprint/cmake-build-release && \

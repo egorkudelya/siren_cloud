@@ -1,7 +1,7 @@
 #include "engine.h"
 #include "../thread_pool/async_manager.h"
 #include "../common/request_manager.h"
-#include "../logger/logger.h"
+#include "../common/common.h"
 #include <filesystem>
 
 namespace siren_core
@@ -9,6 +9,35 @@ namespace siren_core
     siren::SirenCore* CreateCore()
     {
         siren::CoreSpecification spec;
+
+        std::string zscore = siren::getenv("CORE_PEAK_ZSCORE");
+        std::string block_size = siren::getenv("CORE_BLOCK_SIZE");
+        std::string stride_coeff = siren::getenv("CORE_BLOCK_STRIDE_COEFF");
+
+        if (!zscore.empty())
+        {
+        #ifndef __clang__
+            siren::convert_to_type(zscore, spec.core_params.target_zscore);
+        #else
+            float zscore_f = std::stof(zscore);
+            release_assert(!isnan(zscore_f), "zscore_f is nan");
+            spec.core_params.target_zscore = zscore_f;
+        #endif
+        }
+        if (!block_size.empty())
+        {
+            siren::convert_to_type(block_size, spec.core_params.target_block_size);
+        }
+        if (!stride_coeff.empty())
+        {
+        #ifndef __clang__
+            siren::convert_to_type(stride_coeff, spec.core_params.stride_coeff);
+        #else
+            float stride_coeff_f = std::stof(stride_coeff);
+            release_assert(!isnan(stride_coeff_f), "stride_coeff_f is nan");
+            spec.core_params.stride_coeff = stride_coeff_f;
+        #endif
+        }
         return new siren::SirenCore(std::move(spec));
     }
 }
@@ -67,12 +96,12 @@ namespace siren::cloud
             return false;
         }
 
-        auto postgresConnection = m_primaryPool->getConnection();
+        DBConnectionPtr postgresConnection = m_primaryPool->getConnection();
         Query postgresReq;
         std::string sql = "SELECT hash, timestamp, song_id FROM fingerprint WHERE song_id = " + std::to_string(songId);
         postgresReq.emplace("query", sql);
 
-        auto postgresCommand = postgresConnection->createCommand(std::move(postgresReq));
+        DBCommandPtr postgresCommand = postgresConnection->createCommand(std::move(postgresReq));
         if (!postgresCommand->execute() || postgresCommand->isEmpty())
         {
             Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Could not fetch data from primary storage for caching");
@@ -81,6 +110,8 @@ namespace siren::cloud
         }
 
         QueryCollection elasticQueries;
+        elasticQueries.reserve(postgresCommand->getSize());
+
         std::stringstream ss;
         while (postgresCommand->fetchNext())
         {
@@ -105,8 +136,8 @@ namespace siren::cloud
             ss.str({});
         }
 
-        auto elasticConnection = m_cachePool->getConnection();
-        auto elasticCommand = elasticConnection->createCommand(std::move(elasticQueries));
+        DBConnectionPtr elasticConnection = m_cachePool->getConnection();
+        DBCommandPtr elasticCommand = elasticConnection->createCommand(std::move(elasticQueries));
 
         bool isSuccess = elasticCommand->execute();
 
@@ -119,28 +150,34 @@ namespace siren::cloud
     DBCommandPtr Engine::fetchFingerprintsFromCache(bool& isSuccess, const FingerprintType& snippet)
     {
         std::string batchSize = siren::getenv("ELASTIC_BATCH_SIZE");
-        size_t optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 5000;
+        size_t optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 1000;
 
-        auto formQuery = [](const std::string& hashes)
+        std::string windowSize = siren::getenv("ES_RESULT_WINDOW");
+        size_t optimalWindowSize = !windowSize.empty() ? std::stoul(windowSize) : 10000;
+
+        auto formQuery = [optimalWindowSize](std::string&& hashes)
         {
             std::stringstream ss;
-            ss << R"({"size": 10000,"query": {"constant_score" : {"filter" : {"terms" : {"hash" : [)" << hashes << "]}}}}}";
+            ss << R"({"size":)" << optimalWindowSize <<
+                  R"(,"query": {"constant_score" : {"filter": {"terms" : {"hash" : [)" << hashes <<
+                  R"(]}}}}})";
             return ss.str();
         };
 
-        auto hashes = snippet.get_hashes();
-        std::stringstream stream;
+        const auto& hashes = snippet.get_hashes();
         QueryCollection queryCollection;
+        queryCollection.reserve(hashes.size());
+
+        std::stringstream stream;
         for (size_t i = 0; i < hashes.size(); i++)
         {
             stream << '\"' << hashes[i] << '\"';
-            if ((i % optimalBatchSize == 0 || i == hashes.size() - 1))
+            if (i % optimalBatchSize == 0 || i == hashes.size() - 1)
             {
-                std::string str = formQuery(stream.str());
                 Query query;
                 query.emplace("lucene", "fingerprint/_msearch");
                 query.emplace("header", "{}");
-                query.emplace("query", str);
+                query.emplace("query", formQuery(stream.str()));
                 query.emplace("request_type", "GET");
 
                 queryCollection.insertQuery(std::move(query));
@@ -154,8 +191,8 @@ namespace siren::cloud
             }
         }
 
-        auto elasticConnection = m_cachePool->getConnection();
-        auto elasticCommand = elasticConnection->createCommand(std::move(queryCollection));
+        DBConnectionPtr elasticConnection = m_cachePool->getConnection();
+        DBCommandPtr elasticCommand = elasticConnection->createCommand(std::move(queryCollection));
         bool success = elasticCommand->execute();
         m_cachePool->releaseConnection(std::move(elasticConnection));
         if (!success)
@@ -170,7 +207,7 @@ namespace siren::cloud
 
     DBCommandPtr Engine::fetchFingerprintsFromPrimary(bool& isSuccess, const FingerprintType& snippet)
     {
-        auto hashes = snippet.get_hashes();
+        const auto& hashes = snippet.get_hashes();
         std::stringstream stream;
         stream << "SELECT hash, timestamp, song_id FROM fingerprint WHERE hash = ANY (\'{";
 
@@ -188,8 +225,8 @@ namespace siren::cloud
         Query query;
         query.emplace("query", stream.str());
 
-        auto postgresConnection = m_primaryPool->getConnection();
-        auto postgresCommand = postgresConnection->createCommand(std::move(query));
+        DBConnectionPtr postgresConnection = m_primaryPool->getConnection();
+        DBCommandPtr postgresCommand = postgresConnection->createCommand(std::move(query));
         bool success = postgresCommand->execute();
         m_primaryPool->releaseConnection(std::move(postgresConnection));
         if (!success)
@@ -205,7 +242,7 @@ namespace siren::cloud
     HistReturnType Engine::findSongIdByFingerprint(bool& isSuccess, FingerprintType&& fingerprint)
     {
         bool isElasticSuccess = false;
-        auto elasticCommand = fetchFingerprintsFromCache(isElasticSuccess, fingerprint);
+        DBCommandPtr elasticCommand = fetchFingerprintsFromCache(isElasticSuccess, fingerprint);
         if (!isElasticSuccess)
         {
             isSuccess = false;
@@ -222,7 +259,7 @@ namespace siren::cloud
         Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, "Failed to deduce song id from cache data");
 
         bool isPostgresSuccess = false;
-        auto postgresCommand = fetchFingerprintsFromPrimary(isPostgresSuccess, fingerprint);
+        DBCommandPtr postgresCommand = fetchFingerprintsFromPrimary(isPostgresSuccess, fingerprint);
         if (!isPostgresSuccess)
         {
             isSuccess = false;
@@ -266,8 +303,8 @@ namespace siren::cloud
 
         query.emplace("query", sql.str());
 
-        auto connection = m_primaryPool->getConnection();
-        auto command = connection->createCommand(std::move(query));
+        DBConnectionPtr connection = m_primaryPool->getConnection();
+        DBCommandPtr command = connection->createCommand(std::move(query));
 
         if (!command->execute() || !command->asBool("find_song_id", exists))
         {
@@ -289,8 +326,8 @@ namespace siren::cloud
         query.emplace("query", stream.str());
         query.emplace("request_type", "GET");
 
-        auto connection = m_cachePool->getConnection();
-        auto command = connection->createCommand(std::move(query));
+        DBConnectionPtr connection = m_cachePool->getConnection();
+        DBCommandPtr command = connection->createCommand(std::move(query));
 
         size_t count{0};
         if (!command->execute() || !command->asSize("count", count))
@@ -306,8 +343,10 @@ namespace siren::cloud
 
     bool Engine::loadFingerprintIntoPrimary(const FingerprintType& fingerprint, SongIdType songId)
     {
-        std::stringstream stream;
         QueryCollection queryCollection;
+        queryCollection.reserve(fingerprint.get_size());
+
+        std::stringstream stream;
         for (auto it = fingerprint.cbegin(); it != fingerprint.cend(); it++)
         {
             Query query;
@@ -323,9 +362,9 @@ namespace siren::cloud
         }
 
         bool isSuccess;
-        auto connection = m_primaryPool->getConnection();
+        DBConnectionPtr connection = m_primaryPool->getConnection();
         {
-            auto command = connection->createCommand(std::move(queryCollection));
+            DBCommandPtr command = connection->createCommand(std::move(queryCollection));
             isSuccess = command->execute();
         }
 
@@ -334,7 +373,7 @@ namespace siren::cloud
         stream << "DELETE FROM fingerprint WHERE hash=-1 AND timestamp=-1 AND song_id=" << songId;
         cleanUpQuery.emplace("query", stream.str());
 
-        auto command = connection->createCommand(std::move(cleanUpQuery));
+        DBCommandPtr command = connection->createCommand(std::move(cleanUpQuery));
         command->execute();
 
         m_primaryPool->releaseConnection(std::move(connection));
@@ -344,6 +383,8 @@ namespace siren::cloud
     bool Engine::loadFingerprintIntoCache(const FingerprintType& fingerprint, SongIdType songId)
     {
         QueryCollection queries;
+        queries.reserve(fingerprint.get_size());
+
         std::stringstream stream;
         for (auto it = fingerprint.cbegin(); it != fingerprint.cend(); it++)
         {
@@ -362,8 +403,8 @@ namespace siren::cloud
             stream.clear();
             stream.str({});
         }
-        auto connection = m_cachePool->getConnection();
-        auto command = connection->createCommand(std::move(queries));
+        DBConnectionPtr connection = m_cachePool->getConnection();
+        DBCommandPtr command = connection->createCommand(std::move(queries));
         bool isSuccess = command->execute();
         m_cachePool->releaseConnection(std::move(connection));
         return isSuccess;
@@ -385,14 +426,11 @@ namespace siren::cloud
             return false;
         }
 
-        std::filesystem::path path(url);
-        filePath += path.extension();
-
         std::string strTimeout = siren::getenv("THIRDPARTY_API_TIMEOUT_MS");
         int timeout = !strTimeout.empty() ? std::stoi(strTimeout) : 30000;
 
         std::ofstream ofstream(filePath, std::ios::binary);
-        HttpResponse res = RequestManager::DownloadFile(url, ofstream, timeout);
+        const HttpResponse& res = RequestManager::DownloadFile(url, ofstream, timeout);
 
         if (res.status_code == 0)
         {
@@ -407,7 +445,7 @@ namespace siren::cloud
             return false;
         }
 
-        auto coreResult = m_sirenCore->make_fingerprint(filePath);
+        const CoreReturnType& coreResult = m_sirenCore->make_fingerprint(filePath);
         if (coreResult.code != siren::CoreStatus::OK)
         {
             std::stringstream err;
@@ -458,8 +496,8 @@ namespace siren::cloud
         query.emplace("query", stream.str());
         query.emplace("request_type", "POST");
 
-        auto connection = m_cachePool->getConnection();
-        auto command = connection->createCommand(std::move(query));
+        DBConnectionPtr connection = m_cachePool->getConnection();
+        DBCommandPtr command = connection->createCommand(std::move(query));
 
         bool isSuccess = command->execute();
         m_cachePool->releaseConnection(std::move(connection));
@@ -474,8 +512,8 @@ namespace siren::cloud
         sql << "DELETE FROM fingerprint WHERE song_id=" << songId;
         query.emplace("query", sql.str());
 
-        auto connection = m_primaryPool->getConnection();
-        auto command = connection->createCommand(std::move(query));
+        DBConnectionPtr connection = m_primaryPool->getConnection();
+        DBCommandPtr command = connection->createCommand(std::move(query));
 
         bool isSuccess = command->execute();
         m_cachePool->releaseConnection(std::move(connection));
@@ -514,12 +552,7 @@ namespace siren::cloud
     {
         bool primaryCheck;
         bool isPrimaryOk = isSongIdInPrimary(primaryCheck, songId, true);
-
-        if (!isPrimaryOk || primaryCheck)
-        {
-            return false;
-        }
-        return true;
+        return isPrimaryOk && !primaryCheck;
     }
 
 }// namespace siren::cloud

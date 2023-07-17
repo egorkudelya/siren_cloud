@@ -44,39 +44,38 @@ namespace siren::cloud
     Histogram::Histogram(const DBCommandPtr& dbReturnPtr, const FingerprintType& fingerprint)
     {
         std::string minWassDistance = siren::getenv("MIN_WASSERSTEIN_DISTANCE");
-        m_minWassersteinDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 45;
+        m_minWassersteinDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 27.5;
 
-        std::unordered_multimap<HashType, std::pair<SongIdType, TimestampType>> dist;
+        HashHistogram hist;
+        hist.reserve(dbReturnPtr->getSize());
+        m_histogram.reserve(fingerprint.get_size());
+
+        HashType hash;
+        TimestampType timestamp;
+        SongIdType songId;
         while (dbReturnPtr->fetchNext())
         {
-            HashType hash;
-            TimestampType timestamp;
-            SongIdType songId;
-            bool isValid = dbReturnPtr->asUint64("hash", hash)
-                        && dbReturnPtr->asInt32("timestamp", timestamp)
-                        && dbReturnPtr->asUint64("song_id", songId);
-
+            bool isValid = dbReturnPtr->asUint64("hash", hash) && dbReturnPtr->asInt32("timestamp", timestamp) && dbReturnPtr->asUint64("song_id", songId);
             if (!isValid)
             {
                 Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "Could not extract necessary data from DBCommandPtr");
                 continue;
             }
-            dist.emplace(hash, std::make_pair(songId, timestamp));
+            hist.emplace(hash, std::make_pair(songId, timestamp));
         }
 
         for (auto incomingIt = fingerprint.cbegin(); incomingIt != fingerprint.cend(); incomingIt++)
         {
-            HashType incomingHash = incomingIt->first;
-            TimestampType incomingTs = incomingIt->second;
-
-            auto tsIdRange = dist.equal_range(incomingHash);
+            const HashType& incomingHash = incomingIt->first;
+            const TimestampType& incomingTs = incomingIt->second;
+            auto tsIdRange = hist.equal_range(incomingHash);
             for (auto dbIt = tsIdRange.first; dbIt != tsIdRange.second; dbIt++)
             {
-                SongIdType dbSongId = dbIt->second.first;
-                TimestampType originalTs = dbIt->second.second;
+                const SongIdType& dbSongId = dbIt->second.first;
+                const TimestampType& originalTs = dbIt->second.second;
                 DeltaType delta = originalTs - incomingTs;
 
-                m_histogram.insert(HistogramEntry{dbSongId, delta, originalTs});
+                m_histogram.emplace(std::move(HistogramEntry{dbSongId, delta, originalTs}));
             }
         }
     }
@@ -103,7 +102,7 @@ namespace siren::cloud
 
     Histogram::DeltaCounterForIds Histogram::groupDeltasByCount() const
     {
-        const auto& deltaIdIndex = m_histogram.get<tags::IdDeltaTsComposite>();
+        const auto& deltaIdIndex = m_histogram.get<tags::IdDeltaComposite>();
 
         DeltaCounterForIds countedDeltas;
         for (auto first = deltaIdIndex.begin(), last = deltaIdIndex.end(); first != last;)
@@ -119,16 +118,18 @@ namespace siren::cloud
 
     HistReturnType Histogram::findDominantPeak()
     {
-        auto counterPerSongId = groupDeltasByCount();
+        DeltaCounterForIds counterPerSongId = groupDeltasByCount();
         auto maxIt = counterPerSongId.begin();
 
         std::vector<float> peak{(float)maxIt->first};
         std::vector<float> noise;
 
         auto it = counterPerSongId.begin();
-        while (noise.size() <= 10 || it != counterPerSongId.end())
+
+        // comparing the most significant signal to other potential candidates
+        while (noise.size() <= 10 && it != counterPerSongId.end())
         {
-            if (it->second != maxIt->second)
+            if (it->second.first != maxIt->second.first)
             {
                 noise.push_back(it->first);
             }
@@ -149,7 +150,12 @@ namespace siren::cloud
             SongIdType matchId = maxIt->second.first;
             DeltaType matchDelta = maxIt->second.second;
 
-            auto lastMatch = m_histogram.get<tags::IdDeltaTsComposite>().find(std::make_tuple(matchId, matchDelta));
+            auto lastMatch = m_histogram.get<tags::IdDeltaComposite>().find(std::make_tuple(matchId, matchDelta));
+
+//            std::stringstream msg;
+//            msg << "Found a song with song id " << matchId << ", wasserstein distance: " << wDistance;
+//            Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
+
             return HistReturnType{HistStatus::OK, matchId, lastMatch->timestamp, wDistance};
         }
 

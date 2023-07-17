@@ -10,6 +10,11 @@ void Query::emplace(const std::string& key, const std::string& value)
     m_body.emplace(key, value);
 }
 
+void Query::emplace(const std::string& key, std::string&& value)
+{
+    m_body.emplace(key, std::move(value));
+}
+
 size_t Query::getSize() const
 {
     return m_body.size();
@@ -120,4 +125,9 @@ bool QueryCollection::insertQuery(Query&& queryBody)
     }
     m_queries.emplace_back(std::move(queryBody));
     return true;
+}
+
+void QueryCollection::reserve(size_t size)
+{
+    m_queries.reserve(size);
 }
