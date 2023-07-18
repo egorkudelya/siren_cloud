@@ -3,6 +3,7 @@
 #include "../common/request_manager.h"
 #include "../common/common.h"
 #include <filesystem>
+#include <regex>
 
 namespace siren_core
 {
@@ -150,18 +151,52 @@ namespace siren::cloud
     DBCommandPtr Engine::fetchFingerprintsFromCache(bool& isSuccess, const FingerprintType& snippet)
     {
         std::string batchSize = siren::getenv("ELASTIC_BATCH_SIZE");
-        size_t optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 1000;
+        size_t optimalBatchSize = !batchSize.empty() ? std::stoul(batchSize) : 500;
 
         std::string windowSize = siren::getenv("ES_RESULT_WINDOW");
-        size_t optimalWindowSize = !windowSize.empty() ? std::stoul(windowSize) : 10000;
+        size_t optimalWindowSize = !windowSize.empty() ? std::stoul(windowSize) : 500;
 
-        auto formQuery = [optimalWindowSize](std::string&& hashes)
+        std::string focusBuckets = siren::getenv("ES_FOCUS_BUCKETS");
+        size_t focusBucketsCount = !focusBuckets.empty() ? std::stoul(focusBuckets) : 35;
+
+        size_t shardSize = focusBucketsCount * optimalWindowSize;
+        auto formQuery = [shardSize, optimalWindowSize, focusBucketsCount](std::string&& hashes)
         {
             std::stringstream ss;
-            ss << R"({"size":)" << optimalWindowSize <<
-                  R"(,"query": {"constant_score" : {"filter": {"terms" : {"hash" : [)" << hashes <<
-                  R"(]}}}}})";
-            return ss.str();
+            ss << R"(
+            {
+              "size": 0,
+              "query": {
+              "function_score": {
+                "random_score": {},
+              "query": {
+                "terms": {"hash": [)" << hashes << R"(]
+                }}}},
+              "aggs": {
+              "sample": {
+                "sampler": {
+                  "shard_size": )" << shardSize << R"(
+                },
+                "aggs": {
+                  "histogram": {
+                    "terms": {
+                    "field": "song_id",
+                    "size": )" << focusBucketsCount << R"(
+                  },
+                    "aggs": {
+                      "most_frequent": {
+                        "top_hits": {
+                          "size": )" << optimalWindowSize << R"(
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+             }
+            }
+            )";
+            return std::regex_replace(ss.str(), std::regex(R"(\r\n|\r|\n)"), "");
         };
 
         const auto& hashes = snippet.get_hashes();
@@ -426,11 +461,14 @@ namespace siren::cloud
             return false;
         }
 
+        std::string useSslStr = siren::getenv("USE_SSL");
+        bool useSsl = !useSslStr.empty() ? std::stoi(useSslStr) : 1;
+
         std::string strTimeout = siren::getenv("THIRDPARTY_API_TIMEOUT_MS");
         int timeout = !strTimeout.empty() ? std::stoi(strTimeout) : 30000;
 
         std::ofstream ofstream(filePath, std::ios::binary);
-        const HttpResponse& res = RequestManager::DownloadFile(url, ofstream, timeout);
+        const HttpResponse& res = RequestManager::DownloadFile(url, ofstream, timeout, useSsl);
 
         if (res.status_code == 0)
         {

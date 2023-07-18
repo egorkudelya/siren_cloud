@@ -16,7 +16,7 @@ TEST(SirenAlgorithm, TestGeneral)
         std::ifstream fingerprint(path);
         std::string content((std::istreambuf_iterator<char>(fingerprint)), (std::istreambuf_iterator<char>()));
 
-        HttpResponse response = RequestManager::Post(url, content, contentType, {});
+        HttpResponse response = RequestManager::Post(url, content, contentType, {}, false);
 
         if (response.status_code != 200)
         {
@@ -26,10 +26,6 @@ TEST(SirenAlgorithm, TestGeneral)
         Json json = Json::parse(std::move(response.text));
         if (json["name"] != targetName)
         {
-            if (targetName == "Doin Time" && json["name"] == "Doin' Time")
-            {
-                return true;
-            }
             return false;
         }
         return true;
@@ -53,8 +49,8 @@ TEST(SirenAlgorithm, TestGeneral)
     }
 
     ASSERT_TRUE(hits > 0);
-
     float acc = float(hits) / float(hits + misses);
-    ASSERT_TRUE(acc > 0.65);
     std::cerr << "Est. accuracy after evaluating the algorithm on " << hits + misses << " cassettes: " << acc << std::endl;
+
+    ASSERT_TRUE(acc > 0.65);
 }

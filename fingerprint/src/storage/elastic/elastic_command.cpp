@@ -64,6 +64,9 @@ namespace siren::cloud::elastic
         auth.user = m_credentials.elasticUser;
         auth.password = m_credentials.elasticPassword;
 
+        std::string useSslStr = siren::getenv("USE_SSL");
+        bool useSsl = !useSslStr.empty() ? std::stoi(useSslStr) : 1;
+
         QueryCollection queries = getQueries();
         if (queries.empty())
         {
@@ -90,7 +93,7 @@ namespace siren::cloud::elastic
 
         if (queries.size() == 1)
         {
-            return doExecute(auth, url, type, queries.begin()->get("query"));
+            return doExecute(auth, url, type, queries.begin()->get("query"), useSsl);
         }
 
         bool isBulk = contains(url, "_bulk") && !header.empty();
@@ -114,8 +117,8 @@ namespace siren::cloud::elastic
             for (auto&& query: queries)
             {
                 futures.emplace_back(AsyncManager::instance().submitTask(
-                    [this, url, auth, type, strQuery = std::move(query.get("query"))] {
-                        if (!doExecute(auth, url, type, strQuery))
+                    [this, url, auth, type, useSsl, strQuery = std::move(query.get("query"))] {
+                        if (!doExecute(auth, url, type, strQuery, useSsl))
                         {
                             Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery asynchronously."
                             "Consider making individual queries more lightweight or opting for a bulk version");
@@ -146,7 +149,7 @@ namespace siren::cloud::elastic
                 streamQuery << currentQuery;
             }
 
-            if (!doExecute(auth, url, type, streamQuery.str()))
+            if (!doExecute(auth, url, type, streamQuery.str(), useSsl))
             {
                 Logger::log(LogLevel::ERROR, __FILE__, __FUNCTION__, __LINE__, "doExecute failed to execute ESQuery");
                 return false;
@@ -172,8 +175,8 @@ namespace siren::cloud::elastic
                 streamQuery << currentQuery;
             }
             futures.emplace_back(AsyncManager::instance().submitTask(
-                [this, url, type, auth, strQuery = std::move(streamQuery.str())] {
-                    if (!doExecute(auth, url, type, strQuery))
+                [this, url, type, auth, useSsl, strQuery = std::move(streamQuery.str())] {
+                    if (!doExecute(auth, url, type, strQuery, useSsl))
                     {
                         Logger::log(LogLevel::FATAL, __FILE__, __FUNCTION__, __LINE__,
                         "doExecute failed to execute ESQuery asynchronously. Consider adjusting the value for ELASTIC_BATCH_SIZE"
@@ -184,23 +187,23 @@ namespace siren::cloud::elastic
         return true;
     }
 
-    bool ElasticCommand::doExecute(const Auth& auth, const std::string& url, const std::string& ReqType, const std::string& body)
+    bool ElasticCommand::doExecute(const Auth& auth, const std::string& url, const std::string& ReqType, const std::string& body, bool isVerifying)
     {
         std::string contentType = "application/json";
         HttpResponse res;
         switch (hash(ReqType))
         {
             case hash("PUT"):
-                res = RequestManager::Put(url, body, contentType, auth);
+                res = RequestManager::Put(url, body, contentType, auth, isVerifying);
                 break;
             case hash("POST"):
-                res = RequestManager::Post(url, body, contentType, auth);
+                res = RequestManager::Post(url, body, contentType, auth, isVerifying);
                 break;
             case hash("GET"):
-                res = RequestManager::Get(url, body, contentType, auth);
+                res = RequestManager::Get(url, body, contentType, auth, isVerifying);
                 break;
             case hash("DELETE"):
-                res = RequestManager::Delete(url, body, contentType, auth);
+                res = RequestManager::Delete(url, body, contentType, auth, isVerifying);
                 break;
         }
 
@@ -254,7 +257,22 @@ namespace siren::cloud::elastic
         {
             for (auto&& queryRes: esResponse["responses"])
             {
-                for (auto&& hit: queryRes["hits"]["hits"])
+                Json hitsArray;
+                if (queryRes.contains("aggregations") && queryRes["aggregations"].contains("sample") && queryRes["aggregations"]["sample"].contains("histogram"))
+                {
+                    for (auto&& bucket: queryRes["aggregations"]["sample"]["histogram"]["buckets"])
+                    {
+                        for (auto&& hit: bucket["most_frequent"]["hits"]["hits"])
+                        {
+                            hitsArray.emplace_back(std::move(hit));
+                        }
+                    }
+                }
+                else
+                {
+                    hitsArray = std::move(queryRes["hits"]["hits"]);
+                }
+                for (auto&& hit: hitsArray)
                 {
                     resArray.emplace_back(std::move(hit));
                 }

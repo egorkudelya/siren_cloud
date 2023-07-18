@@ -2,7 +2,7 @@
 
 set -e
 
-if [ -z "$ELASTIC_USER" ] || [ -z "$ELASTIC_PASSWORD" ] || [ -z "$SHARD_COUNT" ] || [ -z "$ES_PORT" ] || [ -z "$REPLICA_COUNT" ]; then
+if [ -z "$ELASTIC_USER" ] || [ -z "$ELASTIC_PASSWORD" ] || [ -z "$SHARD_COUNT" ] || [ -z "$ES_PORT" ] || [ -z "$ES_RESULT_WINDOW" ] || [ -z "$REPLICA_COUNT" ]; then
   echo "ERROR: Required environment variables not set."
   exit 1
 fi
@@ -12,6 +12,7 @@ es_password="$ELASTIC_PASSWORD"
 es_host="$ELASTIC_HOST"
 es_port=$ES_PORT
 shard_count=$SHARD_COUNT
+es_inner_window=$ES_RESULT_WINDOW
 replica_count=$REPLICA_COUNT
 index="fingerprint"
 lucene="$index"
@@ -38,4 +39,11 @@ if curl -k -u "$es_user:$es_password" -H "Content-Type: application/json" -X PUT
   exit 0
 fi
   echo "Failed to create mapping"
+exit 1
+
+if curl -k -u "$es_user:$es_password" -X PUT "$url/_settings" -H "Content-Type: application/json" -d "{\"index.max_inner_result_window\": $es_inner_window}" | grep -q "acknowledged"; then
+  echo "max_inner_result_window updated successfully"
+  exit 0
+fi
+  echo "Failed to set max_inner_result_window"
 exit 1

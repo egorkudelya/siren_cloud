@@ -44,10 +44,16 @@ namespace siren::cloud
     Histogram::Histogram(const DBCommandPtr& dbReturnPtr, const FingerprintType& fingerprint)
     {
         std::string minWassDistance = siren::getenv("MIN_WASSERSTEIN_DISTANCE");
-        m_minWassersteinDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 27.5;
+        m_minWassersteinDistance = !minWassDistance.empty() ? std::stof(minWassDistance) : 28;
+
+        size_t dataSize = dbReturnPtr->getSize();
+        if (dataSize > 1e6)
+        {
+            Logger::log(LogLevel::WARNING, __FILE__, __FUNCTION__, __LINE__, "DBCommandPtr size exceeds 1m, expect a performance dip");
+        }
 
         HashHistogram hist;
-        hist.reserve(dbReturnPtr->getSize());
+        hist.reserve(dataSize);
         m_histogram.reserve(fingerprint.get_size());
 
         HashType hash;
