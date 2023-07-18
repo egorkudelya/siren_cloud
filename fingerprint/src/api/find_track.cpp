@@ -79,6 +79,9 @@ namespace siren::cloud
 
         FingerprintType fingerprint(map.begin(), map.end());
 
+        std::string useSslStr = siren::getenv("USE_SSL");
+        bool useSsl = !useSslStr.empty() ? std::stoi(useSslStr) : 1;
+
         bool isSuccess = false;
         auto engineRes = m_engine->findSongIdByFingerprint(isSuccess, std::move(fingerprint));
         if (engineRes.getStatus() != HistStatus::OK)
@@ -90,7 +93,7 @@ namespace siren::cloud
         }
 
         std::string url = m_metadataAddr + "/api/records/" + std::to_string(engineRes.getSongId());
-        HttpResponse metadataRes = RequestManager::Get(url, {}, "Content-Type: application/json", {});
+        HttpResponse metadataRes = RequestManager::Get(url, {}, "Content-Type: application/json", {}, useSsl);
 
         if (metadataRes.status_code != 200)
         {

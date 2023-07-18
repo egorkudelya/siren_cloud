@@ -32,12 +32,15 @@ namespace siren::cloud
         auto& req = getRequest();
         auto& reply = getReply();
 
+        std::string useSslStr = siren::getenv("USE_SSL");
+        bool useSsl = !useSslStr.empty() ? std::stoi(useSslStr) : 1;
+
         std::stringstream msg;
         msg << "Deleting fingerprint of song with id " << req.song_id();
         Logger::log(LogLevel::INFO, __FILE__, __FUNCTION__, __LINE__, msg.str());
 
         SongIdType songId = req.song_id();
-        AsyncManager::instance().submitTask([this, songId] {
+        AsyncManager::instance().submitTask([this, songId, useSsl] {
             if (!m_engine->purgeFingerprintBySongId(songId))
             {
                 std::stringstream err;
@@ -47,7 +50,7 @@ namespace siren::cloud
             }
 
             std::string url = m_metadataAddr + "/api/records/do_delete/" + std::to_string(songId);
-            HttpResponse metadataRes = RequestManager::Delete(url, {}, "Content-Type: application/json", {});
+            HttpResponse metadataRes = RequestManager::Delete(url, {}, "Content-Type: application/json", {}, useSsl);
 
             if (metadataRes.status_code != 204)
             {

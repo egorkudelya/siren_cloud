@@ -87,12 +87,13 @@ namespace siren::cloud::postgres
 
     size_t PostgresCommand::getSize() const
     {
-        size_t size = 0;
-        for (const auto& buf: m_bufVec)
+        size_t outerSize = m_bufVec.size();
+        if (outerSize > 0)
         {
-            size += buf.size();
+            size_t innerSize = m_bufVec.begin()->size();
+            return outerSize * innerSize;
         }
-        return size;
+        return outerSize;
     }
 
     bool PostgresCommand::asInt32(const std::string& columnName, int32_t& val) const

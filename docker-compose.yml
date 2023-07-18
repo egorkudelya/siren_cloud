@@ -245,6 +245,7 @@ services:
         "export SHARD_COUNT=${SHARD_COUNT}" \
         "export ES_PORT=${ES_PORT}" \
         "export ES_RESULT_WINDOW=${ES_RESULT_WINDOW}" \
+        "export ES_FOCUS_BUCKETS=${ES_FOCUS_BUCKETS}" \
         "export REPLICA_COUNT=${REPLICA_COUNT}" \
         "export ELASTIC_BATCH_SIZE=${ELASTIC_BATCH_SIZE}" \
         "export ELASTIC_HOST=${ELASTIC_HOST}" \
@@ -265,6 +266,7 @@ services:
         "export METADATA_ADDRESS=${METADATA_ADDRESS}" \
         "export SIREN_HOST=${SIREN_HOST}" \
         "export SIREN_PORT=${SIREN_PORT}" \
+        "export USE_SSL=${USE_SSL}" \
         "export METADATA_PORT=${METADATA_PORT}" > /home/user/.bashrc
         cp /home/user/.bashrc /home/user/.profile
         /usr/sbin/sshd -D -f /etc/ssh/sshd_config_siren

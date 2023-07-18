@@ -33,7 +33,7 @@ namespace siren::cloud::elastic
 
     private:
         std::string formBulkQuery(Query&& queryBody, const std::string& header);
-        bool doExecute(const Auth& auth, const std::string& url, const std::string& ReqType, const std::string& body);
+        bool doExecute(const Auth& auth, const std::string& url, const std::string& ReqType, const std::string& body, bool isVerifying=true);
 
         template<typename T>
         bool asValue(const std::string& fieldName, T& value) const
