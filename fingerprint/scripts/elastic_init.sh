@@ -36,7 +36,6 @@ mapping_query="{\"properties\": {\"hash\":{\"type\": \"keyword\"},\"timestamp\":
 
 if curl -k -u "$es_user:$es_password" -H "Content-Type: application/json" -X PUT -d "$mapping_query" "$url/_mapping" | grep -q "acknowledged"; then
   echo "Mapping created successfully"
-  exit 0
 fi
   echo "Failed to create mapping"
 exit 1

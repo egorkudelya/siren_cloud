@@ -95,8 +95,6 @@ class Seeder:
     def postTracks(self):
         url = self.sirenUrl + "records"
         for i, row in self.df.iterrows():
-            if row['track_title'] in self.cache['records']:
-                continue
             artistIds = [self.cache['artists'][row['artist_name']]]
             albumIds = [self.cache['albums'][row['album_title']]]
             genreIds = [self.cache['genres'][genre] for genre in row['track_genres'].strip('][').split(', ')]
