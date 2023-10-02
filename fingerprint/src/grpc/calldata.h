@@ -32,6 +32,9 @@ namespace siren::cloud
     {
     public:
         virtual ~CallDataBase() = default;
+        CallDataBase(CallDataBase&& other) noexcept = default;
+        CallDataBase& operator=(CallDataBase&& other) noexcept = default;
+
         virtual void proceed() = 0;
         virtual CallStatus getStatus() = 0;
 
@@ -62,6 +65,8 @@ namespace siren::cloud
         }
 
         virtual ~CallData() = default;
+        CallData(CallData&& other) noexcept = default;
+        CallData& operator=(CallData&& other) noexcept = default;
 
     public:
         void proceed() override
