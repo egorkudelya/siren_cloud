@@ -12,6 +12,8 @@ public:
     explicit AbstractCommand(Query&& query);
     explicit AbstractCommand(QueryCollection&& queries);
     virtual ~AbstractCommand() = default;
+    AbstractCommand(AbstractCommand&& other) noexcept = default;
+    AbstractCommand& operator=(AbstractCommand&& other) noexcept = default;
 
     virtual bool isBatch() const;
     virtual QueryCollection getQueries() const;
@@ -34,7 +36,7 @@ protected:
     size_t m_idx{0};
     bool m_isFirstIter{true};
     bool m_isBatch{false};
-    const QueryCollection m_queries;
+    QueryCollection m_queries;
 };
 
 using DBCommandPtr = std::shared_ptr<AbstractCommand>;
